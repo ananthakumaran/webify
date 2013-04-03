@@ -1,0 +1,24 @@
+name:                webify
+version:             0.1.0.0
+synopsis:            webfont generator
+-- description:
+homepage:            http://github.com/ananthakumaran/webify
+license:             MIT
+license-file:        LICENSE
+author:              Anantha Kumaran
+maintainer:          ananthakumaran@gmail.com
+-- copyright:
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable webify
+  hs-source-dirs:   src
+  main-is:             Webify.hs
+  -- other-modules:
+  build-depends:       base ==4.5.*,
+                       containers >= 0.5.2.1,
+                       bytestring >= 0.9,
+                       binary >= 0.5.1,
+                       binary-strict >= 0.4.8,
+                       text >= 0.7.2
