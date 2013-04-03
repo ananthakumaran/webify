@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module TTF(
   TTF
   , OS2
@@ -31,6 +33,7 @@ import Data.ByteString.Char8 (unpack)
 import Data.Word
 import Data.Int
 import Control.Monad
+import Utils
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf16BE)
 import qualified Data.ByteString as B
@@ -132,23 +135,16 @@ data TTF = TTF { version :: Fixed
 
 parseTableDirectory :: Get(TableDirectory)
 parseTableDirectory = do
-  tag <- getByteString 4
+  tag <- liftM unpack $ getByteString 4
   checkSum <- getULong
   offset <- getULong
   length <- getULong
-  return TableDirectory{ tag = unpack tag
-                       , checkSum = checkSum
-                       , offset = offset
-                       , TTF.length = length}
+  return TableDirectory{..}
 
 parseTableDirectories :: Int -> Get (Map String TableDirectory)
 parseTableDirectories n = do
   list <- replicateM n parseTableDirectory
   return $ fromList $ map (\x -> (tag x, x)) list
-
-getResult ((Right x), _) = x
-
-substr start length = B.take length . B.drop start
 
 parseNameRecord :: B.ByteString -> Int -> Get NameRecord
 parseNameRecord font storageOffset = do
@@ -159,13 +155,7 @@ parseNameRecord font storageOffset = do
   strLength <- getUShort
   strOffset <- getUShort
   let str = substr (fromIntegral ((fromIntegral storageOffset) + (fromIntegral strOffset))) (fromIntegral strLength) font
-  return NameRecord{ platformId = platformId
-                   , encodingId = encodingId
-                   , languageId = languageId
-                   , nameId = nameId
-                   , strLength = strLength
-                   , strOffset = strOffset
-                   , str = decodeUtf16BE str }
+  return NameRecord{str = decodeUtf16BE str, ..}
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
@@ -183,7 +173,7 @@ parseName tableDirectories font =
 
 parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
 parseOS2 = parseTable "OS/2" (do
-  version <- getUShort
+  os2Version <- getUShort
   xAvgCharWidth <- getShort
   usWeightClass <- getUShort
   usWidthClass <- getUShort
@@ -215,38 +205,7 @@ parseOS2 = parseTable "OS/2" (do
   usWinDescent <- getUShort
   ulCodePageRange1 <- getULong
   ulCodePageRange2 <- getULong
-  return OS2{os2Version = version
-            , xAvgCharWidth = xAvgCharWidth
-            , usWeightClass = usWeightClass
-            , usWidthClass = usWidthClass
-            , fsType = fsType
-            , ySubscriptXSize = ySubscriptXSize
-            , ySubscriptYSize = ySubscriptYSize
-            , ySubscriptXOffset = ySubscriptXOffset
-            , ySubscriptYOffset = ySubscriptYOffset
-            , ySuperscriptXSize = ySuperscriptXSize
-            , ySuperscriptYSize = ySuperscriptYSize
-            , ySuperscriptXOffset = ySuperscriptXOffset
-            , ySuperscriptYOffset = ySuperscriptYOffset
-            , yStrikeoutSize = yStrikeoutSize
-            , yStrikeoutPosition = yStrikeoutPosition
-            , sFamilyClass = sFamilyClass
-            , panose = panose
-            , ulUnicodeRange1 = ulUnicodeRange1
-            , ulUnicodeRange2 = ulUnicodeRange2
-            , ulUnicodeRange3 = ulUnicodeRange3
-            , ulUnicodeRange4 = ulUnicodeRange4
-            , aschVendID = aschVendID
-            , fsSelection = fsSelection
-            , usFirstCharIndex = usFirstCharIndex
-            , usLastCharIndex = usLastCharIndex
-            , sTypoAscender = sTypoAscender
-            , sTypoDescender = sTypoDescender
-            , sTypoLineGap = sTypoLineGap
-            , usWinAscent = usWinAscent
-            , usWinDescent = usWinDescent
-            , ulCodePageRange1 = ulCodePageRange1
-            , ulCodePageRange2 = ulCodePageRange2})
+  return (OS2 {..}))
 
 
 parseHead :: Map String TableDirectory -> B.ByteString -> Head
@@ -279,12 +238,4 @@ parse font = do
       head = parseHead tableDirectories font
       name = parseName tableDirectories font
     in
-    return TTF{version = version
-              , numTables = numTables
-              , searchRange = searchRange
-              , entrySelector = entrySelector
-              , rangeShift = rangeShift
-              , tableDirectories = tableDirectories
-              , os2 = os2
-              , TTF.head = head
-              , name = name}
+    return TTF{..}

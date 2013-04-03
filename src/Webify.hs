@@ -1,11 +1,8 @@
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Control.Monad
 import TTF
 import EOT
 import Data.Binary.Strict.Get
-
-getResult ((Right x), _) = x
+import Utils
 
 main :: IO ()
 main = do

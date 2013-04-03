@@ -12,7 +12,6 @@ import Data.Bits
 import Data.Maybe (fromJust)
 import Data.List (find)
 import Data.Text.Encoding (encodeUtf16LE)
-import Data.Binary.Put
 
 
 type ULong = Word32
