@@ -1,30 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module TTF(
-  TTF
-  , OS2
+  TTF(..)
+  , OS2(..)
+  , Head(..)
+  , Name(..)
+  , NameRecord(..)
   , parse
-  , panose
-  , os2
-  , fsSelection
-  , usWeightClass
-  , fsType
-  , ulUnicodeRange1
-  , ulUnicodeRange2
-  , ulUnicodeRange3
-  , ulUnicodeRange4
-  , ulCodePageRange1
-  , ulCodePageRange2
-  , TTF.head
-  , checkSumAdjusment
-  , name
-  , nameRecords
-  , platformId
-  , encodingId
-  , languageId
-  , nameId
-  , strLength
-  , str
 ) where
 
 import Data.Map.Strict hiding(map)
