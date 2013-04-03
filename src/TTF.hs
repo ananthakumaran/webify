@@ -136,8 +136,8 @@ parseNameRecord font storageOffset = do
   nameId <- getUShort
   strLength <- getUShort
   strOffset <- getUShort
-  let str = substr (fromIntegral ((fromIntegral storageOffset) + (fromIntegral strOffset))) (fromIntegral strLength) font
-  return NameRecord{str = decodeUtf16BE str, ..}
+  let str = decodeUtf16BE $ substr (fromIntegral ((fromIntegral storageOffset) + (fromIntegral strOffset))) (fromIntegral strLength) font
+  return NameRecord{..}
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
@@ -148,10 +148,7 @@ parseName tableDirectories font =
     numberOfNameRecords <- getUShort
     storageOffset <- getUShort
     nameRecords <- replicateM (fromIntegral numberOfNameRecords) $ parseNameRecord font (tableStart + (fromIntegral storageOffset))
-    return Name{formatSelector = formatSelector
-               , numberOfNameRecords = numberOfNameRecords
-               , storageOffset = storageOffset
-               , nameRecords = nameRecords}) font
+    return Name{..}) font
 
 parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
 parseOS2 = parseTable "OS/2" (do
@@ -192,14 +189,11 @@ parseOS2 = parseTable "OS/2" (do
 
 parseHead :: Map String TableDirectory -> B.ByteString -> Head
 parseHead = parseTable "head" (do
-  version <- getFixed
+  headVersion <- getFixed
   fontRevision <- getFixed
   checkSumAdjusment <- getULong
   magicNumber <- getULong
-  return Head{headVersion = version
-             , fontRevision = fontRevision
-             , checkSumAdjusment = checkSumAdjusment
-             , magicNumber = magicNumber})
+  return Head{..})
 
 parseTable :: String -> Get a -> (Map String TableDirectory -> B.ByteString -> a)
 parseTable name m =
