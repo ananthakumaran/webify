@@ -6,6 +6,7 @@ module TTF(
   , Head(..)
   , Name(..)
   , NameRecord(..)
+  , TableDirectory(..)
   , parse
 ) where
 
@@ -27,7 +28,7 @@ type UShort = Word16
 type Short = Int16
 type ULong = Word32
 type Long = Int32
-type Fixed = Int32
+type Fixed = Word32
 
 getFixed :: Get Fixed
 getFixed = liftM fromIntegral getWord32be
@@ -45,6 +46,7 @@ data TableDirectory = TableDirectory { tag :: String
                                      , checkSum :: ULong
                                      , offset :: ULong
                                      , length :: ULong
+                                     , rawData :: B.ByteString
                                      } deriving (Show)
 
 
@@ -115,17 +117,18 @@ data TTF = TTF { version :: Fixed
                } deriving (Show)
 
 
-parseTableDirectory :: Get(TableDirectory)
-parseTableDirectory = do
+parseTableDirectory :: B.ByteString -> Get(TableDirectory)
+parseTableDirectory font = do
   tag <- liftM unpack $ getByteString 4
   checkSum <- getULong
   offset <- getULong
   length <- getULong
+  let rawData = substr (fromIntegral offset) (fromIntegral length) font
   return TableDirectory{..}
 
-parseTableDirectories :: Int -> Get (Map String TableDirectory)
-parseTableDirectories n = do
-  list <- replicateM n parseTableDirectory
+parseTableDirectories :: B.ByteString -> Int -> Get (Map String TableDirectory)
+parseTableDirectories font n = do
+  list <- replicateM n $ parseTableDirectory font
   return $ fromList $ map (\x -> (tag x, x)) list
 
 parseNameRecord :: B.ByteString -> Int -> Get NameRecord
@@ -209,7 +212,7 @@ parse font = do
   searchRange <- getUShort
   entrySelector <- getUShort
   rangeShift <- getUShort
-  tableDirectories <- parseTableDirectories (fromIntegral numTables)
+  tableDirectories <- parseTableDirectories font (fromIntegral numTables)
   let os2 = parseOS2 tableDirectories font
       head = parseHead tableDirectories font
       name = parseName tableDirectories font

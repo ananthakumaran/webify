@@ -12,6 +12,7 @@ import Data.Bits
 import Data.Maybe (fromJust)
 import Data.List (find)
 import Data.Text.Encoding (encodeUtf16LE)
+import Utils
 
 
 type ULong = Word32
@@ -75,5 +76,5 @@ combine rest = do
 
 generate :: TTF -> B.ByteString -> B.ByteString
 generate ttf font =
-  let rest = B.concat $ BL.toChunks $ runPut (payload ttf font)
-  in B.concat $ BL.toChunks $ runPut $ combine rest
+  let rest = toStrict $ runPut (payload ttf font)
+  in toStrict $ runPut $ combine rest
