@@ -184,7 +184,7 @@ parseOS2 = parseTable "OS/2" (do
   usWinDescent <- getUShort
   ulCodePageRange1 <- getULong
   ulCodePageRange2 <- getULong
-  return (OS2 {..}))
+  return OS2 {..})
 
 
 parseHead :: Map String TableDirectory -> B.ByteString -> Head
