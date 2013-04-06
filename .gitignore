@@ -3,3 +3,4 @@ cabal-dev
 fonts/*
 !fonts/.gitkeep
 dist/
+ttfdump*

@@ -2,14 +2,14 @@ module WOFF(
   generate
 ) where
 
-import TTF hiding(head)
+import Codec.Compression.Zlib
+import Control.Monad
+import Data.Binary.Put
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (pack)
-import Data.Binary.Put
-import Data.Word
-import Control.Monad
 import qualified Data.Map.Strict as Map
-import Codec.Compression.Zlib
+import Data.Word
+import TTF hiding(head)
 import Utils
 
 

@@ -2,16 +2,15 @@ module EOT(
   generate
 ) where
 
-import TTF
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Data.Binary.Put
-import Data.Word
 import Control.Monad
+import Data.Binary.Put
 import Data.Bits
-import Data.Maybe (fromJust)
+import qualified Data.ByteString as B
 import Data.List (find)
+import Data.Maybe (fromJust)
 import Data.Text.Encoding (encodeUtf16LE)
+import Data.Word
+import TTF
 import Utils
 
 

@@ -1,12 +1,14 @@
-import qualified Data.ByteString as B
-import TTF
-import EOT
-import WOFF
+
+import Control.Monad
 import Data.Binary.Strict.Get
-import Utils
+import qualified Data.ByteString as B
+import EOT
+import SVG
 import System.Environment (getArgs)
 import System.FilePath
-import Control.Monad
+import TTF
+import Utils
+import WOFF
 
 main :: IO ()
 main = do
@@ -20,6 +22,6 @@ convert :: FilePath -> IO ()
 convert filename = do
   input <- B.readFile filename
   let ttf = getResult $ (runGet (parse input) $ input)
---  print ttf
   B.writeFile (changeExtension "eot" filename) $ EOT.generate ttf input
   B.writeFile (changeExtension "woff" filename) $ WOFF.generate ttf input
+  B.writeFile (changeExtension "svg" filename) $ SVG.generate ttf input
