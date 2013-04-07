@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+require 'pathname'
+require 'timeout'
+require 'erb'
+
+BIN = "dist/build/webify/webify"
+GENERATED_EXTS = %w[woff eot svg]
+FONT_EXTS = [['ttf', 'truetype'], ['woff', 'woff'], ['svg', 'svg'], ['eot', 'embedded-opentype']]
+
+def exec_with_timeout(cmd, timeout)
+  pid = Process.spawn(cmd, {:pgroup => true})
+  begin
+    Timeout.timeout(timeout) do
+      Process.waitpid(pid, 0)
+      $?.exitstatus == 0
+    end
+  rescue Timeout::Error
+    puts "!!timeout"
+    Process.kill(15, -Process.getpgid(pid))
+    false
+  end
+end
+
+def change_extension(path, ext)
+  path.gsub(/.ttf$/, ".#{ext}")
+end
+
+successfully_converted = []
+total = 0
+
+FileUtils.rm_f(Dir.glob("generated_fonts/*"))
+
+Dir.glob "test_fonts/*.ttf" do |font|
+  puts font
+  generated_fonts = GENERATED_EXTS.map { |e| change_extension(font, e) }
+  if exec_with_timeout("#{BIN} #{font}", 1)
+    successfully_converted << font
+    FileUtils.mv(generated_fonts, "generated_fonts")
+    FileUtils.cp(font, "generated_fonts")
+  else
+    FileUtils.rm_f(generated_fonts)
+  end
+  total += 1
+end
+
+
+template = ERB.new <<EOT
+<html>
+<style>
+<% fonts.each do |font| %>
+  <% FONT_EXTS.each do |ext, format| %>
+   @font-face {
+    font-family: '<%= font + "-" + ext %>';
+    src: url('<%= font + "." + ext %>') format('<%= format %>');
+   }
+  <% end %>
+<% end %>
+</style>
+<body>
+<% fonts.each do |font| %>
+  <% FONT_EXTS.each do |ext, _| %>
+    <p style="font-family: '<%= font + "-" + ext %>'; font-size: 30px;"> <%= font + "  " + ext %> ABCDEFGHIJKLMONPQRSTUVWXYZ 0123456789 abcdefghijklmonopqrstuvwxyz</p>
+  <% end %>
+<% end %>
+</body>
+</html>
+EOT
+
+fonts = successfully_converted.map do |f|
+  p = Pathname.new(f)
+  p.basename.to_s.sub(p.extname, "")
+end
+
+File.open("generated_fonts/index.html", 'w') do |f|
+  f.write(template.result(binding))
+end
+
+puts "converted #{fonts.size} out of #{total}"

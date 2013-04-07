@@ -46,7 +46,7 @@ contourPath :: [(Int, Int, Int)] -> String
 contourPath contour =
   "M" ++ show x ++ " " ++ show y ++ path 0 ""
   where (x, y, _) = Prelude.head contour
-        midval a b = a + (b - a) `div` 2
+        midval a b = (fromIntegral a) + (fromIntegral (b - a)) / 2
         onCurve flag = testBit flag 0
         ccontour = cycle contour
         path n acc | n >= (Prelude.length contour) = acc ++ "Z"
@@ -131,4 +131,3 @@ generate ttf font =
   let svg = doc svgDocInfo $
             xelem "svg" (xattr "xmlns" "http://www.w3.org/2000/svg" <#> svgbody ttf)
   in xrender svg
-
