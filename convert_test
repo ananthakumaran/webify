@@ -18,7 +18,7 @@ def exec_with_timeout(cmd, timeout)
     end
   rescue Timeout::Error
     puts "!!timeout"
-    Process.kill(15, -Process.getpgid(pid))
+    Process.kill(15, -Process.getpgid(pid)) rescue nil
     false
   end
 end
@@ -35,7 +35,7 @@ FileUtils.rm_f(Dir.glob("generated_fonts/*"))
 Dir.glob "test_fonts/*.ttf" do |font|
   puts font
   generated_fonts = GENERATED_EXTS.map { |e| change_extension(font, e) }
-  if exec_with_timeout("#{BIN} #{font}", 1)
+  if exec_with_timeout("#{BIN} '#{font}'", 1)
     successfully_converted << font
     FileUtils.mv(generated_fonts, "generated_fonts")
     FileUtils.cp(font, "generated_fonts")
@@ -61,7 +61,7 @@ template = ERB.new <<EOT
 <body>
 <% fonts.each do |font| %>
   <% FONT_EXTS.each do |ext, _| %>
-    <p style="font-family: '<%= font + "-" + ext %>'; font-size: 30px;"> <%= font + "  " + ext %> ABCDEFGHIJKLMONPQRSTUVWXYZ 0123456789 abcdefghijklmonopqrstuvwxyz</p>
+    <p style="font-family: '<%= font + "-" + ext %>'; font-size: 30px; white-space: nowrap;"> <%= font + "  " + ext %> ABCDEFGHIJKLMONPQRSTUVWXYZ 0123456789 abcdefghijklmonopqrstuvwxyz</p>
   <% end %>
 <% end %>
 </body>
