@@ -61,11 +61,13 @@ contourPath contour =
                          next True False False = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ (show $ midval x1 x2) ++ " " ++ (show $ midval y1 y2))
                          next False False _ = path (n + 1) (acc ++ "T" ++ (show $ midval x x1) ++ " " ++ (show $ midval y y1))
                          next False True _ = path (n + 1) (acc ++ "T" ++ show x1 ++ " " ++ show y1)
-                         -- rest no implemented
+                         -- rest not implemented
                      in
                       next (onCurve f) (onCurve f1) (onCurve f2)
 
 
+svgPath :: Glyf -> String
+svgPath EmptyGlyf = ""
 svgPath glyph =
   body
   where endPts = sEndPtsOfCountours glyph
@@ -103,7 +105,7 @@ testText ttf =
   xelem "g" (xattr "style" ("font-family: " ++ (show $ fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
              xelems (map text $ zip ["!\"#$%&'()*+,-./0123456789:;<>?",
                                      "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_",
-                                     "`abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
+                                     "` abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
   where
     text :: (String, Int) -> Xml Elem
     text (t, i) = xelem "text" (xattrs [xattr "x" "20",

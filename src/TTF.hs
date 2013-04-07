@@ -218,7 +218,8 @@ data Hmtx = Hmtx { hMetrics :: [HMetric]
 
 data Loca = Loca { locaOffsets :: [ULong] } deriving (Show)
 
-data Glyf = SimpleGlyf { sNumberOfContours :: Short
+data Glyf = EmptyGlyf |
+            SimpleGlyf { sNumberOfContours :: Short
                          , sXMin :: FWord
                          , sYMin :: FWord
                          , sXMax :: FWord
@@ -257,8 +258,8 @@ data TTF = TTF { version :: Fixed
 
 
 glyphId :: CmapTable -> Int -> Int
-glyphId CmapFormat0{c0glyphIDs = glyphIds} n | n >= 0 && n <= 256 = fromIntegral $ glyphIds !! n
-                                               | otherwise = 0
+glyphId CmapFormat0{c0glyphIDs = glyphIds} n | n >= 0 && n < 256 = fromIntegral $ glyphIds !! n
+                                             | otherwise = 0
 
 -- not implemented
 -- glyphId f@CmapFormat4{} n = 0
@@ -451,14 +452,15 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
   sYCoordinates <- liftM snd $ foldM (parseCoordinates 2 5) (0, []) sFlags
   return SimpleGlyf{sNumberOfContours = numberOfContours, ..}
                            | otherwise = do
---  error "not implemented"
+  error "not implemented"
   return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
 
-parseGlyfs :: Int -> [ULong] -> Map String TableDirectory -> B.ByteString -> [Glyf]
+parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
 parseGlyfs glyphCount offsets tableDirectories font =
-  map (getGlyph . fromIntegral) (take glyphCount offsets)
-  where tableStart = fromIntegral $ offset $ tableDirectories ! "glyf"
-        getGlyph offset =
+  map getGlyph $ zip (take glyphCount offsets) $ diff offsets
+  where tableStart = fromIntegral . offset $ tableDirectories ! "glyf"
+        getGlyph (_, 0) = EmptyGlyf
+        getGlyph (offset, _len) =
           getResult $ runGet (do
             skip $ tableStart + offset
             numberOfContours <- getShort
@@ -547,6 +549,6 @@ parse font = do
       glyphCount = (fromIntegral $ numGlyphs maxp)
       loca = parseLoca (fromIntegral $ glyphDataFormat head) glyphCount tableDirectories font
       hmtx = parseHmtx (fromIntegral $ numberOfHMetrics hhea) glyphCount tableDirectories font
-      glyfs = parseGlyfs glyphCount (locaOffsets loca) tableDirectories font
+      glyfs = parseGlyfs glyphCount (map fromIntegral $ locaOffsets loca) tableDirectories font
     in
     return TTF{..}

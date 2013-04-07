@@ -3,6 +3,7 @@ module Utils(
   , substr
   , toStrict
   , toLazy
+  , diff
 ) where
 
 import qualified Data.ByteString as B
@@ -20,3 +21,6 @@ toStrict = B.concat . BL.toChunks
 
 toLazy :: B.ByteString -> BL.ByteString
 toLazy str = BL.fromChunks  [str]
+
+diff :: Num b => [b] -> [b]
+diff l = map (\(a, b) -> a - b) $ zip l $ tail l
