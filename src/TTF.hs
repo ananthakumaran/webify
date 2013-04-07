@@ -14,6 +14,10 @@ module TTF(
   , Hmtx(..)
   , Glyf(..)
   , CmapTable(..)
+  , UFWord
+  , UShort
+  , ULong
+  , Byte
   , parse
   , glyphId
 ) where
@@ -33,13 +37,13 @@ import Data.Word
 import Utils
 
 type Byte = Word8
-type Char = Int8
+-- type Char = Int8
 type UShort = Word16
 type Short = Int16
 type FWord = Int16
 type UFWord = Word16
 type ULong = Word32
-type Long = Int32
+-- type Long = Int32
 type Fixed = Word32
 
 
@@ -270,18 +274,18 @@ glyphId :: CmapTable -> Int -> Int
 glyphId CmapFormat0{c0glyphIDs = glyphIds} n | n >= 0 && n < 256 = fromIntegral $ glyphIds !! n
                                              | otherwise = 0
 
-glyphId f@CmapFormat6{c6glyphIds = glyphIds,
+glyphId CmapFormat6{c6glyphIds = glyphIds,
                       c6firstCode = firstCode,
                       c6entryCount = entryCount } n | n >= start && n <= end = fromIntegral $ glyphIds !! (n - start)
                                                     | otherwise = 0
   where start = fromIntegral firstCode
-        end = start + (fromIntegral entryCount)
+        end = start + fromIntegral entryCount
 
-glyphId f@CmapFormat4{} n = error "not implemented cmap format 4"
+glyphId CmapFormat4{} _n = error "not implemented cmap format 4"
 
 
 
-parseTableDirectory :: B.ByteString -> Get(TableDirectory)
+parseTableDirectory :: B.ByteString -> Get TableDirectory
 parseTableDirectory font = do
   tag <- liftM unpack $ getByteString 4
   checkSum <- getULong
@@ -304,7 +308,7 @@ parseNameRecord font storageOffset = do
   strLength <- getUShort
   strOffset <- getUShort
   let str = decoder platformId encodingId $ substr
-            (fromIntegral (((fromIntegral storageOffset) :: Int) + (fromIntegral strOffset))) (fromIntegral strLength) font
+            (fromIntegral ((fromIntegral storageOffset :: Int) + fromIntegral strOffset)) (fromIntegral strLength) font
   return NameRecord{..}
   where
     decoder 3 _ = decodeUtf16BE
@@ -316,11 +320,11 @@ parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
   getResult $ runGet (do
     let tableStart = fromIntegral $ offset $ tableDirectories ! "name"
-    skip $ tableStart
+    skip tableStart
     formatSelector <- getUShort
     numberOfNameRecords <- getUShort
     storageOffset <- getUShort
-    nameRecords <- replicateM (fromIntegral numberOfNameRecords) $ parseNameRecord font (tableStart + (fromIntegral storageOffset))
+    nameRecords <- replicateM (fromIntegral numberOfNameRecords) $ parseNameRecord font (tableStart + fromIntegral storageOffset)
     return Name{..}) font
 
 parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
@@ -432,26 +436,26 @@ parseHmtx mcount glyphCount = parseTable "hmtx" (do
 
 
 parseFlags :: Int -> [Byte] -> Get [Byte]
-parseFlags n a | n <= 0 = do return a
+parseFlags n a | n <= 0 = return a
                | otherwise = do
   flag <- getByte
   if testBit flag 3 then
     do
      repeats <- liftM fromIntegral getByte
-     parseFlags (n - repeats - 1) $ a ++ (replicate repeats flag) ++ [flag]
+     parseFlags (n - repeats - 1) $ a ++ replicate repeats flag ++ [flag]
     else
     parseFlags (n - 1) $ a ++ [flag]
 
-
-parseCoordinates shortBit sameBit (current, ac) flag = do
-  if testBit flag shortBit then
-    do
-      delta <- liftM fromIntegral getByte
-      if testBit flag sameBit then
-        return (current + delta, ac ++ [current + delta])
-        else
-        return (current - delta, ac ++ [current - delta])
-    else
+parseCoordinates ::
+  Int -> Int -> (Short, [Short]) -> Byte -> Get (Short, [Short])
+parseCoordinates shortBit sameBit (current, ac) flag
+  | testBit flag shortBit = do
+    delta <- liftM fromIntegral getByte
+    return (if testBit flag sameBit then
+              (current + delta, ac ++ [current + delta])
+            else
+              (current - delta, ac ++ [current - delta]))
+  | otherwise =
     if testBit flag sameBit then
       return (current, ac ++ [current])
       else
@@ -479,14 +483,14 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
 parseGlyfs glyphCount offsets tableDirectories font =
-  map getGlyph $ zip (take glyphCount offsets) $ diff offsets
+  zipWith getGlyph (take glyphCount offsets) $ diff offsets
   where tableStart = fromIntegral . offset $ tableDirectories ! "glyf"
-        getGlyph (_, 0) = EmptyGlyf
-        getGlyph (offset, _len) =
+        getGlyph _ 0 = EmptyGlyf
+        getGlyph offset _len =
           getResult $ runGet (do
             skip $ tableStart + offset
             numberOfContours <- getShort
-            parseGlyf $ numberOfContours
+            parseGlyf numberOfContours
           ) font
 
 parseLoca :: Int -> Int -> Map String TableDirectory -> B.ByteString -> Loca
@@ -519,7 +523,7 @@ parseCmapSubTable 4 = do
   c4startCount <- replicateM segCount getUShort
   c4idDelta <- replicateM segCount getUShort
   c4idRangeOffset <- replicateM segCount getUShort
-  let glyphCount = ((fromIntegral c4Length) - (2 * 8) - (2 * segCount * 4)) `div` 2
+  let glyphCount = (fromIntegral c4Length - (2 * 8) - (2 * segCount * 4)) `div` 2
   c4glyphIds <- replicateM glyphCount getUShort
   return CmapFormat4{c4Format = 4, ..}
 
@@ -551,16 +555,15 @@ parseCmap :: Map String TableDirectory -> B.ByteString -> Cmap
 parseCmap tableDirectories font =
   getResult $ runGet (do
     let tableStart = fromIntegral $ offset $ tableDirectories ! "cmap"
-    skip $ tableStart
+    skip tableStart
     cmapVersion <- getUShort
     numberOfSubtables <- getUShort
     encodingDirectories <- replicateM (fromIntegral numberOfSubtables) parseCmapEncodingDirectory
     let subTables = map (parseCmapEncoding font . (+ tableStart) . fromIntegral . cmapOffset) encodingDirectories
     return Cmap{..}) font
 
-parseTable :: String -> Get a -> (Map String TableDirectory -> B.ByteString -> a)
-parseTable name m =
-  \tableDirectories font ->
+parseTable :: String -> Get a -> Map String TableDirectory -> B.ByteString -> a
+parseTable name m tableDirectories font =
   getResult $ runGet (do
     skip $ fromIntegral $ offset $ tableDirectories ! name
     m) font

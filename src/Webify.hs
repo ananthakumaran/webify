@@ -21,7 +21,7 @@ changeExtension ext = flip addExtension ext . dropExtension
 convert :: FilePath -> IO ()
 convert filename = do
   input <- B.readFile filename
-  let ttf = getResult $ (runGet (parse input) $ input)
+  let ttf = getResult $ runGet (parse input) input
   B.writeFile (changeExtension "eot" filename) $ EOT.generate ttf input
   B.writeFile (changeExtension "woff" filename) $ WOFF.generate ttf input
   B.writeFile (changeExtension "svg" filename) $ SVG.generate ttf input

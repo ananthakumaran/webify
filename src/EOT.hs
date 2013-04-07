@@ -9,31 +9,32 @@ import qualified Data.ByteString as B
 import Data.List (find)
 import Data.Maybe (fromJust)
 import Data.Text.Encoding (encodeUtf16LE)
-import Data.Word
 import TTF
 import Utils
 
-
-type ULong = Word32
-type UShort = Word16
-
+putULong :: ULong -> Put
 putULong = putWord32le
+
+putByte :: Byte -> Put
 putByte = putWord8
+
+putUShort :: UShort -> Put
 putUShort = putWord16le
 
-
-match nameId' name =
+match :: UShort -> Name -> NameRecord
+match nameId' name' =
   fromJust $ find predicate records
   where
-    records = nameRecords name
+    records = nameRecords name'
     predicate nr =
       platformId nr == 3 &&
       encodingId nr == 1 &&
       languageId nr == 0x0409 &&
       nameId nr == nameId'
 
-putNameStr name i = do
-  let nameRecord = match i name
+putNameStr :: Name -> UShort -> PutM ()
+putNameStr name' i = do
+  let nameRecord = match i name'
   putUShort $ strLength nameRecord
   putByteString $ encodeUtf16LE $ str nameRecord
   putUShort 0
@@ -44,11 +45,11 @@ payload ttf font = do
   putULong 0x00020001
   putULong 0 -- flags
   let os = os2 ttf
-      head = TTF.head ttf
-      name = TTF.name ttf
+      head' = TTF.head ttf
+      name' = TTF.name ttf
   mapM_ putByte $ panose os
   putByte 0x01
-  putByte (if (testBit (fsSelection os) 0) then 0x01 else 0)
+  putByte (if testBit (fsSelection os) 0 then 0x01 else 0)
   putULong $ fromIntegral $ usWeightClass os
   putUShort 0  --  embedding permission putUShort $ fsType os
   putUShort 0x504C
@@ -58,17 +59,18 @@ payload ttf font = do
   putULong $ ulUnicodeRange4 os
   putULong $ ulCodePageRange1 os
   putULong $ ulCodePageRange2 os
-  putULong $ checkSumAdjusment head
+  putULong $ checkSumAdjusment head'
   _ <- replicateM 4 (putULong 0)
   putUShort 0
-  putNameStr name 1
-  putNameStr name 2
-  putNameStr name 5
-  putNameStr name 4
+  putNameStr name' 1
+  putNameStr name' 2
+  putNameStr name' 5
+  putNameStr name' 4
   putUShort 0 -- RootString
   putByteString font
 
 
+combine :: B.ByteString -> PutM ()
 combine rest = do
   putULong $ fromIntegral $ B.length rest + 4
   putByteString rest

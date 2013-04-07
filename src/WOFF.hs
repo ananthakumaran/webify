@@ -16,17 +16,25 @@ import Utils
 type UInt32 = Word32
 type UInt16 = Word16
 
+putUInt32 :: UInt32 -> Put
 putUInt32 = putWord32be
+
+putUInt16 :: UInt16 -> Put
 putUInt16 = putWord16be
 
-putTableDirectory ttf ((startOffset, size, padding, compressedData), directory) = do
+putTableDirectory ::
+  ((Int, Int, Int, B.ByteString), TableDirectory) -> PutM ()
+putTableDirectory ((startOffset, size, _padding, _compressedData), directory) = do
   putByteString $ pack $ tag directory
   putUInt32 $ fromIntegral startOffset
-  putUInt32 $ fromIntegral $ size
+  putUInt32 $ fromIntegral size
   putUInt32 $ fromIntegral $ B.length $ rawData directory
   putUInt32 $ checkSum directory
 
 
+calculateOffset ::
+  [(Int, Int, Int, B.ByteString)] -> B.ByteString
+  -> [(Int, Int, Int, B.ByteString)]
 calculateOffset offsets raw =
   (start, size, padding, compressedData) : offsets
   where originalSize = B.length raw
@@ -38,8 +46,9 @@ calculateOffset offsets raw =
         (lastStart, lastSize, lastPadding, _) = head offsets
         start = lastStart + lastSize + lastPadding
         padding | (size `mod` 4) == 0 = 0
-                | otherwise = (4 - (size `mod` 4))
+                | otherwise = 4 - (size `mod` 4)
 
+putFontData :: (Int, Int, Int, B.ByteString) -> PutM ()
 putFontData (_, _, padding, compressedData) = do
   putByteString compressedData
   replicateM_ padding (putWord8 0x0)
@@ -56,17 +65,19 @@ payload ttf font = do
   putUInt32 0 -- meta length uncompressed
   putUInt32 0 -- private block offset
   putUInt32 0 -- private block length
-  let tds = (Map.elems $ tableDirectories ttf)
-      offsets = drop 1 $ reverse $ foldl calculateOffset [((fromIntegral (44 + (20 * numTables ttf))), 0, 0, pack "")] (map rawData tds)
-  mapM_ (putTableDirectory ttf) (zip offsets tds)
-  mapM_  putFontData $ offsets
+  let tds = Map.elems $ tableDirectories ttf
+      initialOffset = [(fromIntegral (44 + (20 * numTables ttf)), 0, 0, pack "")]
+      offsets = drop 1 $ reverse $
+                foldl calculateOffset initialOffset (map rawData tds)
+  mapM_ putTableDirectory (zip offsets tds)
+  mapM_ putFontData offsets
 
 
 combine :: TTF -> B.ByteString -> PutM ()
 combine ttf rest = do
   putUInt32 0x774F4646
   putUInt32 $ version ttf
-  putUInt32 $ fromIntegral $ (B.length rest + 12)
+  putUInt32 $ fromIntegral $ B.length rest + 12
   putByteString rest
 
 generate :: TTF -> B.ByteString -> B.ByteString
