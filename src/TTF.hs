@@ -547,7 +547,7 @@ parse font = do
       cmap = parseCmap tableDirectories font
       maxp = parseMaxp tableDirectories font
       glyphCount = (fromIntegral $ numGlyphs maxp)
-      loca = parseLoca (fromIntegral $ glyphDataFormat head) glyphCount tableDirectories font
+      loca = parseLoca (fromIntegral $ indexToLocFormat head) glyphCount tableDirectories font
       hmtx = parseHmtx (fromIntegral $ numberOfHMetrics hhea) glyphCount tableDirectories font
       glyfs = parseGlyfs glyphCount (map fromIntegral $ locaOffsets loca) tableDirectories font
     in
