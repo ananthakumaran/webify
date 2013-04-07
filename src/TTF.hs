@@ -83,6 +83,13 @@ data CmapTable = CmapFormat0 { c0Format :: UShort
                              , c4idDelta :: [UShort]
                              , c4idRangeOffset :: [UShort]
                              , c4glyphIds :: [UShort]
+                             } |
+                 CmapFormat6 { c6Format :: UShort
+                             , c6Length :: UShort
+                             , c6Version :: UShort
+                             , c6firstCode :: UShort
+                             , c6entryCount :: UShort
+                             , c6glyphIds :: [UShort]
                              } deriving(Show)
 
 
@@ -263,8 +270,15 @@ glyphId :: CmapTable -> Int -> Int
 glyphId CmapFormat0{c0glyphIDs = glyphIds} n | n >= 0 && n < 256 = fromIntegral $ glyphIds !! n
                                              | otherwise = 0
 
--- not implemented
--- glyphId f@CmapFormat4{} n = 0
+glyphId f@CmapFormat6{c6glyphIds = glyphIds,
+                      c6firstCode = firstCode,
+                      c6entryCount = entryCount } n | n >= start && n <= end = fromIntegral $ glyphIds !! (n - start)
+                                                    | otherwise = 0
+  where start = fromIntegral firstCode
+        end = start + (fromIntegral entryCount)
+
+glyphId f@CmapFormat4{} n = error "not implemented cmap format 4"
+
 
 
 parseTableDirectory :: B.ByteString -> Get(TableDirectory)
@@ -460,7 +474,7 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
   sYCoordinates <- liftM snd $ foldM (parseCoordinates 2 5) (0, []) sFlags
   return SimpleGlyf{sNumberOfContours = numberOfContours, ..}
                            | otherwise = do
-  error "not implemented"
+  error "not implemented composite glyf"
   return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
@@ -514,6 +528,17 @@ parseCmapSubTable 0 = do
   c0Version <- getUShort
   c0glyphIDs <- replicateM 256 getByte
   return CmapFormat0{c0Format = 0, ..}
+
+
+parseCmapSubTable 6 = do
+  c6Length <- getUShort
+  c6Version <- getUShort
+  c6firstCode <- getUShort
+  c6entryCount <- getUShort
+  c6glyphIds <- replicateM (fromIntegral c6entryCount) getUShort
+  return CmapFormat6{c6Format = 6, ..}
+
+parseCmapSubTable n = error $ "subtable format not implemented " ++ show n
 
 parseCmapEncoding :: B.ByteString -> Int -> CmapTable
 parseCmapEncoding font offset =
