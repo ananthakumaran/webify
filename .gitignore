@@ -8,3 +8,4 @@ generated_fonts/*
 !generated_fonts/.gitkeep
 dist/
 ttfdump*
+Makefile
