@@ -7,7 +7,7 @@ import Control.Monad
 import Data.Binary.Put
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (pack)
-import qualified Data.Map.Strict as Map
+import qualified Data.Map as Map
 import Data.Word
 import TTF hiding(head)
 import Utils

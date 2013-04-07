@@ -4,10 +4,14 @@ module Utils(
   , toStrict
   , toLazy
   , diff
+  , debug
 ) where
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Control.Monad
+import Debug.Trace
+
 
 getResult :: (Either String t2, t) -> t2
 getResult ((Right x), _) = x
@@ -24,3 +28,6 @@ toLazy str = BL.fromChunks  [str]
 
 diff :: Num b => [b] -> [b]
 diff l = map (\(a, b) -> a - b) $ zip l $ tail l
+
+debug str = do
+  when False $ trace str $ return ()

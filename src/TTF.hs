@@ -23,10 +23,12 @@ import Data.Binary.Strict.Get
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (unpack)
+import Data.Encoding
+import Data.Encoding.MacOSRoman
 import Data.Int
-import Data.Map.Strict hiding(map)
+import Data.Map hiding(map)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf16BE)
+import Data.Text.Encoding
 import Data.Word
 import Utils
 
@@ -287,8 +289,14 @@ parseNameRecord font storageOffset = do
   nameId <- getUShort
   strLength <- getUShort
   strOffset <- getUShort
-  let str = decodeUtf16BE $ substr (fromIntegral ((fromIntegral storageOffset) + (fromIntegral strOffset))) (fromIntegral strLength) font
+  let str = decoder platformId encodingId $ substr
+            (fromIntegral (((fromIntegral storageOffset) :: Int) + (fromIntegral strOffset))) (fromIntegral strLength) font
   return NameRecord{..}
+  where
+    decoder 3 _ = decodeUtf16BE
+    decoder 2 _ = decodeUtf16BE
+    decoder 1 _ = T.pack . decodeStrictByteString MacOSRoman
+    decoder 0 _ = decodeUtf16BE
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
