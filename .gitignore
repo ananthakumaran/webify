@@ -1,11 +1,8 @@
 .DS_Store
 cabal-dev
 fonts/*
-!fonts/.gitkeep
 test_fonts/*
-!test_fonts/.gitkeep
 generated_fonts/*
-!generated_fonts/.gitkeep
 dist/
 ttfdump*
 Makefile
