@@ -81,7 +81,6 @@ svgPath glyph =
 
 svgGlyph ttf cmapTable code =
   xelem "glyph" (xattrs [xattr "unicode" $ [chr code],
-                         xattr "glyph-name" $ [chr code],
                          xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) glyphId',
                          xattr "d" $ svgPath glyph
                         ])
@@ -89,10 +88,15 @@ svgGlyph ttf cmapTable code =
         glyph = glyfs ttf !! glyphId'
 
 
+missingGlyph ttf cmapTable =
+  xelem "missing-glyph" (xattrs [xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) 0,
+                                 xattr "d" $ svgPath glyph])
+  where glyph = glyfs ttf !! 0
+
 svgGlyphs ttf =
   let cmapTable = cmapTableFind ttf 1 0
       start = fromJust $ findIndex ((<) 0) $ c0glyphIDs cmapTable
-  in xelems $ map (svgGlyph ttf cmapTable) [32..126]
+  in xelems $ missingGlyph ttf cmapTable : map (svgGlyph ttf cmapTable) [32..126]
 
 fontFace ttf =
   xelem "font-face" (xattrs [xattr "font-family" $ fontFamilyName ttf,
