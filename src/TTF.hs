@@ -20,6 +20,8 @@ module TTF(
   , Byte
   , parse
   , glyphId
+  , cmapStart
+  , cmapEnd
 ) where
 
 import Control.Monad
@@ -30,7 +32,9 @@ import Data.ByteString.Char8 (unpack)
 import Data.Encoding
 import Data.Encoding.MacOSRoman
 import Data.Int
-import Data.Map hiding(map)
+import Data.List
+import Data.Map hiding(map, findIndex)
+import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Data.Text.Encoding
 import Data.Word
@@ -72,28 +76,28 @@ getUFWord = getUShort
 data CmapTable = CmapFormat0 { c0Format :: UShort
                              , c0Length :: UShort
                              , c0Version :: UShort
-                             , c0glyphIDs :: [Byte]
+                             , c0GlyphIDs :: [Byte]
                              } |
                  CmapFormat4 { c4Format :: UShort
                              , c4Length :: UShort
-                             , c4Version :: UShort
+                             , c4Language :: UShort
                              , c4SegCountX2 :: UShort
                              , c4SearchRange :: UShort
                              , c4EntrySelector :: UShort
                              , c4RangeShift :: UShort
-                             , c4EngCount :: [UShort]
-                             , c4reservedPad :: UShort
-                             , c4startCount :: [UShort]
-                             , c4idDelta :: [UShort]
-                             , c4idRangeOffset :: [UShort]
-                             , c4glyphIds :: [UShort]
+                             , c4EndCodes :: [UShort]
+                             , c4ReservedPad :: UShort
+                             , c4StartCodes :: [UShort]
+                             , c4IdDeltas :: [UShort]
+                             , c4IdRangeOffsets :: [UShort]
+                             , c4GlyphIds :: [UShort]
                              } |
                  CmapFormat6 { c6Format :: UShort
                              , c6Length :: UShort
                              , c6Version :: UShort
-                             , c6firstCode :: UShort
-                             , c6entryCount :: UShort
-                             , c6glyphIds :: [UShort]
+                             , c6FirstCode :: UShort
+                             , c6EntryCount :: UShort
+                             , c6GlyphIds :: [UShort]
                              } deriving(Show)
 
 
@@ -270,19 +274,42 @@ data TTF = TTF { version :: Fixed
 
 
 
+cmapStart :: CmapTable -> Int
+cmapStart CmapFormat0{c0GlyphIDs = glyphIds} = fromJust $ findIndex (> 0) glyphIds
+cmapStart CmapFormat4{c4StartCodes = startCodes} = fromIntegral $ minimum startCodes
+cmapStart CmapFormat6{c6FirstCode = firstCode} = fromIntegral firstCode
+
+cmapEnd :: CmapTable -> Int
+cmapEnd CmapFormat0{c0GlyphIDs = glyphIds} = last $ findIndices (> 0) glyphIds
+cmapEnd CmapFormat4{c4EndCodes = endCodes} = fromIntegral $ maximum endCodes
+cmapEnd CmapFormat6{c6FirstCode = firstCode,
+                    c6EntryCount = entryCount} = fromIntegral $ firstCode + entryCount
+
+
 glyphId :: CmapTable -> Int -> Int
-glyphId CmapFormat0{c0glyphIDs = glyphIds} n | n >= 0 && n < 256 = fromIntegral $ glyphIds !! n
+glyphId CmapFormat0{c0GlyphIDs = glyphIds} n | n >= 0 && n < 256 = fromIntegral $ glyphIds !! n
                                              | otherwise = 0
 
-glyphId CmapFormat6{c6glyphIds = glyphIds,
-                      c6firstCode = firstCode,
-                      c6entryCount = entryCount } n | n >= start && n <= end = fromIntegral $ glyphIds !! (n - start)
+glyphId CmapFormat4{c4EndCodes = endCodes
+                   , c4StartCodes = startCodes
+                   , c4IdDeltas = deltas
+                   , c4IdRangeOffsets = rangeOffsets
+                   , c4GlyphIds = glyphIds
+                   , c4SegCountX2 = segCountX2} n'
+  | n < 0 || n > 0xFFFF = 0
+  | (startCodes !! i) > n = 0
+  | (rangeOffsets !! i) == 0 = (fromIntegral ((deltas !! i) + n)) `mod` 65536
+  | otherwise = fromIntegral $ glyphIds !! (fromIntegral $ ((rangeOffsets !! i) `div` 2) + (n - startCodes !! i) - (segCount - fromIntegral i))
+  where n = fromIntegral n'
+        segCount = segCountX2 `div` 2
+        i = fromIntegral . fromJust $ findIndex (>= n) $ endCodes
+
+glyphId CmapFormat6{c6GlyphIds = glyphIds,
+                      c6FirstCode = firstCode,
+                      c6EntryCount = entryCount } n | n >= start && n < end = fromIntegral $ glyphIds !! (n - start)
                                                     | otherwise = 0
   where start = fromIntegral firstCode
         end = start + fromIntegral entryCount
-
-glyphId CmapFormat4{} _n = error "not implemented cmap format 4"
-
 
 
 parseTableDirectory :: B.ByteString -> Get TableDirectory
@@ -479,7 +506,7 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
   sYCoordinates <- liftM snd $ foldM (parseCoordinates 2 5) (0, []) sFlags
   return SimpleGlyf{sNumberOfContours = numberOfContours, ..}
                            | otherwise = do
-  error "not implemented composite glyf"
+--  error "not implemented composite glyf"
   return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
@@ -513,34 +540,34 @@ parseCmapEncodingDirectory = do
 parseCmapSubTable :: Int -> Get CmapTable
 parseCmapSubTable 4 = do
   c4Length <- getUShort
-  c4Version <- getUShort
+  c4Language <- getUShort
   c4SegCountX2 <- getUShort
   let segCount = fromIntegral c4SegCountX2 `div` 2
   c4SearchRange <- getUShort
   c4EntrySelector <- getUShort
   c4RangeShift <- getUShort
-  c4EngCount <- replicateM segCount getUShort
-  c4reservedPad <- getUShort
-  c4startCount <- replicateM segCount getUShort
-  c4idDelta <- replicateM segCount getUShort
-  c4idRangeOffset <- replicateM segCount getUShort
+  c4EndCodes <- replicateM segCount getUShort
+  c4ReservedPad <- getUShort
+  c4StartCodes <- replicateM segCount getUShort
+  c4IdDeltas <- replicateM segCount getUShort
+  c4IdRangeOffsets <- replicateM segCount getUShort
   let glyphCount = (fromIntegral c4Length - (2 * 8) - (2 * segCount * 4)) `div` 2
-  c4glyphIds <- replicateM glyphCount getUShort
+  c4GlyphIds <- replicateM glyphCount getUShort
   return CmapFormat4{c4Format = 4, ..}
 
 parseCmapSubTable 0 = do
   c0Length <- getUShort
   c0Version <- getUShort
-  c0glyphIDs <- replicateM 256 getByte
+  c0GlyphIDs <- replicateM 256 getByte
   return CmapFormat0{c0Format = 0, ..}
 
 
 parseCmapSubTable 6 = do
   c6Length <- getUShort
   c6Version <- getUShort
-  c6firstCode <- getUShort
-  c6entryCount <- getUShort
-  c6glyphIds <- replicateM (fromIntegral c6entryCount) getUShort
+  c6FirstCode <- getUShort
+  c6EntryCount <- getUShort
+  c6GlyphIds <- replicateM (fromIntegral c6EntryCount) getUShort
   return CmapFormat6{c6Format = 6, ..}
 
 parseCmapSubTable n = error $ "subtable format not implemented " ++ show n

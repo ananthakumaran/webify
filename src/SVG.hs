@@ -11,6 +11,14 @@ import qualified Data.Text as T
 import TTF
 import Text.XML.Generator
 
+platformAppleUnicode = 0
+platformMacintosh = 1
+platformISO = 2
+platformMicrosoft = 3
+
+encodingUndefined = 0
+encodingUGL = 1
+
 byNameId :: UShort -> TTF -> T.Text
 byNameId id' ttf =
   str $ fromJust $ find predicate $ nameRecords $ name ttf
@@ -75,6 +83,7 @@ contourPath contour =
 
 svgPath :: Glyf -> String
 svgPath EmptyGlyf = ""
+svgPath CompositeGlyf{} = ""
 svgPath glyph =
   body
   where endPts = sEndPtsOfCountours glyph
@@ -104,8 +113,10 @@ missingGlyph ttf  =
 
 svgGlyphs :: TTF -> Xml Elem
 svgGlyphs ttf =
-  let cmapTable = cmapTableFind ttf 1 0
-  in xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) [32..126]
+  let cmapTable = cmapTableFind ttf platformMicrosoft encodingUGL
+      codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
+      validGlyph code = glyphId cmapTable code > 1
+  in xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
 
 fontFace :: TTF -> Xml Elem
 fontFace ttf =
