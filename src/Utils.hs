@@ -30,4 +30,4 @@ diff :: Num b => [b] -> [b]
 diff l = map (\(a, b) -> a - b) $ zip l $ tail l
 
 debug str = do
-  when False $ trace str $ return ()
+  when True $ trace str $ return ()

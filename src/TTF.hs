@@ -330,6 +330,7 @@ parseName tableDirectories font =
 parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
 parseOS2 = parseTable "OS/2" (do
   os2Version <- getUShort
+  when (not $ os2Version `elem` [1..4]) (error $ "unhandled  os2 version " ++ show os2Version)
   xAvgCharWidth <- getShort
   usWeightClass <- getUShort
   usWidthClass <- getUShort
@@ -565,7 +566,7 @@ parseCmap tableDirectories font =
 parseTable :: String -> Get a -> Map String TableDirectory -> B.ByteString -> a
 parseTable name m tableDirectories font =
   getResult $ runGet (do
-    skip $ fromIntegral $ offset $ tableDirectories ! name
+    skip $ fromIntegral . offset $ tableDirectories ! name
     m) font
 
 parse :: B.ByteString -> Get TTF
