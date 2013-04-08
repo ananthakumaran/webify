@@ -29,8 +29,7 @@ import Data.Binary.Strict.Get
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (unpack)
-import Data.Encoding
-import Data.Encoding.MacOSRoman
+import Data.Text.Encoding.Error
 import Data.Int
 import Data.List
 import Data.Map hiding(map, findIndex)
@@ -340,7 +339,7 @@ parseNameRecord font storageOffset = do
   where
     decoder 3 _ = decodeUtf16BE
     decoder 2 _ = decodeUtf16BE
-    decoder 1 _ = T.pack . decodeStrictByteString MacOSRoman
+    decoder 1 _ = decodeUtf8With ignore
     decoder 0 _ = decodeUtf16BE
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name

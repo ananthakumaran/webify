@@ -6,3 +6,4 @@ generated_fonts/*
 dist/
 ttfdump*
 Makefile
+todo.org
