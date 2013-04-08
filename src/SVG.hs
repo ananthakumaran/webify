@@ -22,7 +22,7 @@ fontFamilyName = byNameId 1
 
 cmapTableFind :: TTF -> UShort -> UShort -> CmapTable
 cmapTableFind ttf platformId' encodingId' =
-  subTables $ cmap ttf !! index
+  subTables (cmap ttf) !! index
   where directories = encodingDirectories $ cmap ttf
         index = fromJust $ findIndex predicate directories
         predicate dr = cmapPlatformId dr == platformId' &&
@@ -65,8 +65,8 @@ contourPath contour =
                                           | y == y1 = path (n + 1) (acc ++ "H" ++ show x1)
                                           | otherwise = path (n + 1) (acc ++ "L" ++ show x1 ++ " " ++ show y1)
                          next True False True = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2)
-                         next True False False = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show $ midval x1 x2 ++ " " ++ show $ midval y1 y2)
-                         next False False _ = path (n + 1) (acc ++ "T" ++ show $ midval x x1 ++ " " ++ show $ midval y y1)
+                         next True False False = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2))
+                         next False False _ = path (n + 1) (acc ++ "T" ++ show (midval x x1) ++ " " ++ show (midval y y1))
                          next False True _ = path (n + 1) (acc ++ "T" ++ show x1 ++ " " ++ show y1)
                          -- rest not implemented
                      in
@@ -117,7 +117,7 @@ fontFace ttf =
 
 testText :: TTF -> Xml Elem
 testText ttf =
-  xelem "g" (xattr "style" ("font-family: " ++ show $ fontFamilyName ttf ++ "; font-size:50;fill:black") <#>
+  xelem "g" (xattr "style" ("font-family: " ++ show (fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
              xelems (zipWith text ["!\"#$%&'()*+,-./0123456789:;<>?",
                                      "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_",
                                      "` abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
