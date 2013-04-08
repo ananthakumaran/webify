@@ -7,7 +7,7 @@ import Data.Binary.Put
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.List (find)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.Text.Encoding (encodeUtf16LE)
 import TTF
 import Utils
@@ -21,23 +21,31 @@ putByte = putWord8
 putUShort :: UShort -> Put
 putUShort = putWord16le
 
-match :: UShort -> Name -> NameRecord
+match :: UShort -> Name -> Maybe NameRecord
 match nameId' name' =
-  fromJust $ find predicate records
+  find predicate records
   where
     records = nameRecords name'
     predicate nr =
-      platformId nr == 3 &&
-      encodingId nr == 1 &&
-      languageId nr == 0x0409 &&
+      ((platformId nr == 1 &&
+        encodingId nr == 0 &&
+        languageId nr == 0) ||
+       (platformId nr == 3 &&
+        encodingId nr == 1 &&
+        languageId nr == 0x0409)) &&
       nameId nr == nameId'
 
 putNameStr :: Name -> UShort -> PutM ()
-putNameStr name' i = do
-  let nameRecord = match i name'
+putNameStr name' i | isJust mnameRecord = do
   putUShort $ strLength nameRecord
   putByteString $ encodeUtf16LE $ str nameRecord
   putUShort 0
+                   | otherwise = do
+  putUShort 0
+  putUShort 0
+  where mnameRecord = match i name'
+        nameRecord = fromJust mnameRecord
+
 
 payload :: TTF -> B.ByteString -> Put
 payload ttf font = do
