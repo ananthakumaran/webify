@@ -31,4 +31,5 @@ executable webify
                        text >= 0.7.2,
                        filepath >= 1.3.0,
                        zlib >= 0.5.4,
-                       xmlgen >= 0.4.0
+                       xmlgen >= 0.4.0,
+                       MissingH >= 1.2.0

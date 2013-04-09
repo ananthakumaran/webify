@@ -13,6 +13,7 @@ module TTF(
   , HMetric(..)
   , Hmtx(..)
   , Glyf(..)
+  , CompositeGlyfElement(..)
   , CmapTable(..)
   , UFWord
   , UShort
@@ -40,7 +41,7 @@ import Data.Word
 import Utils
 
 type Byte = Word8
--- type Char = Int8
+type Char = Int8
 type UShort = Word16
 type Short = Int16
 type FWord = Int16
@@ -65,11 +66,19 @@ getShort = liftM fromIntegral getWord16be
 getByte :: Get Byte
 getByte = getWord8
 
+getChar :: Get TTF.Char
+getChar = liftM fromIntegral getWord8
+
 getFWord :: Get FWord
 getFWord = getShort
 
 getUFWord :: Get UFWord
 getUFWord = getUShort
+
+-- format 2.14
+getUFixed :: Get Double
+getUFixed = liftM ((/ 0x4000) . fromIntegral) getShort
+
 
 
 data CmapTable = CmapFormat0 { c0Format :: UShort
@@ -234,6 +243,18 @@ data Hmtx = Hmtx { hMetrics :: [HMetric]
 
 data Loca = Loca { locaOffsets :: [ULong] } deriving (Show)
 
+data CompositeGlyfElement = CompositeGlyfElement {cFlags :: UShort
+                                                 , cGlyphIndex :: UShort
+                                                 , cXoffset :: Short
+                                                 , cYoffset :: Short
+                                                 , cArgument1 :: Short
+                                                 , cArgument2 :: Short
+                                                 , cXScale :: Double
+                                                 , cYScale :: Double
+                                                 , cScale01 :: Double
+                                                 , cScale10 :: Double
+                                                 } deriving (Show)
+
 data Glyf = EmptyGlyf |
             SimpleGlyf { sNumberOfContours :: Short
                          , sXMin :: FWord
@@ -248,10 +269,13 @@ data Glyf = EmptyGlyf |
                          , sYCoordinates :: [Short]
                          } |
             CompositeGlyf { cNumberOfContours :: Short
-                          -- , cXMin :: FWord
-                          -- , cYMin :: FWord
-                          -- , cXMax :: FWord
-                          -- , cYMax :: FWord
+                          , cXMin :: FWord
+                          , cYMin :: FWord
+                          , cXMax :: FWord
+                          , cYMax :: FWord
+                          , cGlyfs :: [CompositeGlyfElement]
+                          , cNumInstruction :: UShort
+                          , cInstructions :: [Byte]
                           } deriving (Show)
 
 data TTF = TTF { version :: Fixed
@@ -297,11 +321,11 @@ glyphId CmapFormat4{c4EndCodes = endCodes
                    , c4SegCountX2 = segCountX2} n'
   | n < 0 || n > 0xFFFF = 0
   | (startCodes !! i) > n = 0
-  | (rangeOffsets !! i) == 0 = (fromIntegral ((deltas !! i) + n)) `mod` 65536
+  | (rangeOffsets !! i) == 0 = fromIntegral ((deltas !! i) + n) `mod` 65536
   | otherwise = fromIntegral $ glyphIds !! (fromIntegral $ ((rangeOffsets !! i) `div` 2) + (n - startCodes !! i) - (segCount - fromIntegral i))
   where n = fromIntegral n'
         segCount = segCountX2 `div` 2
-        i = fromIntegral . fromJust $ findIndex (>= n) $ endCodes
+        i = fromIntegral . fromJust $ findIndex (>= n) endCodes
 
 glyphId CmapFormat6{c6GlyphIds = glyphIds,
                       c6FirstCode = firstCode,
@@ -356,7 +380,7 @@ parseName tableDirectories font =
 parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
 parseOS2 = parseTable "OS/2" (do
   os2Version <- getUShort
-  when (not $ os2Version `elem` [1..4]) (error $ "unhandled  os2 version " ++ show os2Version)
+  unless (os2Version `elem` [1..4]) (error $ "unhandled  os2 version " ++ show os2Version)
   xAvgCharWidth <- getShort
   usWeightClass <- getUShort
   usWidthClass <- getUShort
@@ -490,6 +514,48 @@ parseCoordinates shortBit sameBit (current, ac) flag
         delta <- getShort
         return (current + delta, ac ++ [current + delta])
 
+
+
+parseCompositeGlyfElement :: Get CompositeGlyfElement
+parseCompositeGlyfElement = do
+  cFlags <- getUShort
+  cGlyphIndex <- getUShort
+  cArgument1 <- getArg cFlags
+  cArgument2 <- getArg cFlags
+  let cScale01 = 0.0
+      cScale10 = 0.0
+      cXScale = 1.0
+      cYScale = 1.0
+      cXoffset | testBit cFlags args_are_xy_values = cArgument1
+               | otherwise = 0
+      cYoffset | testBit cFlags args_are_xy_values = cArgument2
+               | otherwise = 0
+  if testBit cFlags we_have_a_scale then
+    do
+      cXScale <- liftM fromIntegral getUShort
+      let cYScale = cXScale
+      return CompositeGlyfElement{..}
+    else if testBit cFlags we_have_an_x_and_y_scale then
+           do
+             cXScale <- getUFixed
+             cYScale <- getUFixed
+             return CompositeGlyfElement{..}
+         else if testBit cFlags we_have_a_two_by_tow then
+                do
+                  cXScale <- getUFixed
+                  cScale01 <- getUFixed
+                  cScale10 <- getUFixed
+                  cYScale <- getUFixed
+                  return CompositeGlyfElement{..}
+              else return CompositeGlyfElement{..}
+  where getArg f | testBit f arg_1_and_2_are_words = liftM fromIntegral getUShort
+                 | otherwise = liftM fromIntegral TTF.getChar
+        arg_1_and_2_are_words = 0
+        args_are_xy_values = 1
+        we_have_a_scale = 3
+        we_have_an_x_and_y_scale = 6
+        we_have_a_two_by_tow = 7
+
 parseGlyf :: Short -> Get Glyf
 parseGlyf numberOfContours | numberOfContours >= 0 = do
   sXMin <- getFWord
@@ -505,8 +571,33 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
   sYCoordinates <- liftM snd $ foldM (parseCoordinates 2 5) (0, []) sFlags
   return SimpleGlyf{sNumberOfContours = numberOfContours, ..}
                            | otherwise = do
---  error "not implemented composite glyf"
-  return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
+  cXMin <- getFWord
+  cYMin <- getFWord
+  cXMax <- getFWord
+  cYMax <- getFWord
+  cGlyfs <- parseElements
+  let lastFlag = cFlags $ last cGlyfs
+      cNumInstruction = 0
+      cInstructions = []
+  if testBit lastFlag we_have_instructions then
+    do
+      cNumInstruction <- getUShort
+      cInstructions <- replicateM (fromIntegral cNumInstruction) getByte
+      return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
+    else return CompositeGlyf{cNumberOfContours = numberOfContours, ..}
+  where
+    parseElements = do
+          cge <- parseCompositeGlyfElement
+          if testBit (cFlags cge) more_components then
+            do
+              rest <- parseElements
+              return $ cge : rest
+            else
+            return [cge]
+    more_components = 5
+    we_have_instructions = 8
+
+
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
 parseGlyfs glyphCount offsets tableDirectories font =

@@ -1,4 +1,3 @@
-
 import Control.Monad
 import Data.Binary.Strict.Get
 import qualified Data.ByteString as B

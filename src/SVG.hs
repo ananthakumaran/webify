@@ -10,6 +10,8 @@ import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import TTF
 import Text.XML.Generator
+import Text.Printf
+import Data.String.Utils
 
 platformAppleUnicode = 0
 platformMacintosh = 1
@@ -56,12 +58,15 @@ advanceX hmtx' id' =
 
 
 
-contourPath :: [(Int, Int, Int)] -> String
+contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
   "M" ++ show x' ++ " " ++ show y' ++ path 0 ""
   where (x', y', _) = Prelude.head contour
-        midval :: Int -> Int -> Double
-        midval a b = fromIntegral a + fromIntegral (b - a) / 2
+        show x =
+          let formatted = printf "%.1f" x
+          in if endswith ".0" formatted then printf "%.0f" x else formatted
+        midval :: Double -> Double -> Double
+        midval a b = a + (b - a) / 2
         onCurve flag = testBit flag 0
         ccontour = cycle contour
         path n acc | n >= Prelude.length contour = acc ++ "Z"
@@ -81,25 +86,35 @@ contourPath contour =
                       next (onCurve f) (onCurve f1) (onCurve f2)
 
 
-svgPath :: Glyf -> String
-svgPath EmptyGlyf = ""
-svgPath CompositeGlyf{} = ""
-svgPath glyph =
-  body
+glyphPoints :: Glyf -> TTF -> [[(Double, Double, Int)]]
+glyphPoints EmptyGlyf _ = []
+glyphPoints CompositeGlyf{cGlyfs = cglyfs} ttf =
+  concatMap cglyhPoints cglyfs
+  where
+    cglyhPoints cg = map (map (transform cg)) (glyphPoints (glyf $ cGlyphIndex cg) ttf)
+    glyf index = glyfs ttf !! fromIntegral index
+    transform cg (x, y, flag) =
+      ((x * cXScale cg + y * cScale10 cg) + fromIntegral (cXoffset cg)
+      , (y * cYScale cg + x * cScale01 cg) + fromIntegral (cYoffset cg)
+      , flag)
+
+glyphPoints glyph _ =
+  bpts
   where endPts = sEndPtsOfCountours glyph
         pts = zip3 (map fromIntegral $ sXCoordinates glyph) (map fromIntegral $ sYCoordinates glyph) (map fromIntegral $ sFlags glyph)
         splitPts (ac, offset', pts') x = (ac ++ [take (x - offset') pts'], x, drop (x - offset') pts')
         (bpts, _, _) = foldl splitPts ([], -1, pts) $ map fromIntegral endPts
-        body = foldl (++) "" (map contourPath bpts)
 
 
 
+svgPath :: Glyf -> TTF -> String
+svgPath glyf ttf = foldl (++) "" $ map contourPath (glyphPoints glyf ttf)
 
 svgGlyph :: TTF -> CmapTable -> Int -> Xml Elem
 svgGlyph ttf cmapTable code =
   xelem "glyph" (xattrs [xattr "unicode" [chr code],
                          xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) glyphId',
-                         xattr "d" $ svgPath glyph
+                         xattr "d" $ svgPath glyph ttf
                         ])
   where glyphId' = glyphId cmapTable code
         glyph = glyfs ttf !! glyphId'
@@ -108,15 +123,25 @@ svgGlyph ttf cmapTable code =
 missingGlyph :: TTF -> Xml Elem
 missingGlyph ttf  =
   xelem "missing-glyph" (xattrs [xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) 0,
-                                 xattr "d" $ svgPath glyph])
+                                 xattr "d" $ svgPath glyph ttf])
   where glyph = glyfs ttf !! 0
+
+
+validCharCode :: Int -> Bool
+validCharCode n | n == 0x9 = True
+                | n == 0xA = True
+                | n == 0xD = True
+                | n >= 0x20 && n <= 0xD7FF = True
+                | n >= 0xE000 && n <= 0xFFFD = True
+                | n >= 0x1000 && n <= 0x10FFFF = True
+                | otherwise = False
 
 svgGlyphs :: TTF -> Xml Elem
 svgGlyphs ttf =
-  let cmapTable = cmapTableFind ttf platformMicrosoft encodingUGL
-      codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
-      validGlyph code = glyphId cmapTable code > 1
-  in xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
+  xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
+  where cmapTable = cmapTableFind ttf platformMicrosoft encodingUGL
+        codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
+        validGlyph code = validCharCode code && glyphId cmapTable code > 1
 
 fontFace :: TTF -> Xml Elem
 fontFace ttf =
@@ -129,9 +154,9 @@ fontFace ttf =
 testText :: TTF -> Xml Elem
 testText ttf =
   xelem "g" (xattr "style" ("font-family: " ++ show (fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
-             xelems (zipWith text ["!\"#$%&'()*+,-./0123456789:;<>?",
-                                     "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_",
-                                     "` abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
+             xelems (zipWith text ["!\"#$%&'()*+,-./0123456789:;å<>?",
+                                   "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_",
+                                   "` abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
   where
     text :: String -> Int -> Xml Elem
     text t i = xelem "text" (xattrs [xattr "x" "20",
