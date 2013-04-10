@@ -20,11 +20,11 @@ A command line tool to convert ttf file to woff, eot & svg files
 ````css
     @font-face {
         font-family: 'my-font-family';
-        src: font-url('my-font-filename.eot');
-        src: font-url('my-font-filename.eot?#iefix') format('embedded-opentype'),
-        font-url('my-font-filename.svg#my-font-family') format('svg'),
-        font-url('my-font-filename.woff') format('woff'),
-        font-url('my-font-filename.ttf') format('truetype');
+        src: url('my-font-filename.eot');
+        src: url('my-font-filename.eot?#iefix') format('embedded-opentype'),
+        url('my-font-filename.svg#my-font-family') format('svg'),
+        url('my-font-filename.woff') format('woff'),
+        url('my-font-filename.ttf') format('truetype');
         font-weight: normal;
         font-style: normal;
     }
