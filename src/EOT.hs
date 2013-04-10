@@ -37,14 +37,15 @@ match nameId' name' =
 
 putNameStr :: Name -> UShort -> PutM ()
 putNameStr name' i | isJust mnameRecord = do
-  putUShort $ strLength nameRecord
-  putByteString $ encodeUtf16LE $ str nameRecord
+  putUShort $ fromIntegral $ B.length encodedStr
+  putByteString encodedStr
   putUShort 0
                    | otherwise = do
   putUShort 0
   putUShort 0
   where mnameRecord = match i name'
         nameRecord = fromJust mnameRecord
+        encodedStr = encodeUtf16LE $ str nameRecord
 
 
 payload :: TTF -> B.ByteString -> Put

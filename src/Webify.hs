@@ -3,7 +3,6 @@ import Data.Binary.Strict.Get
 import qualified Data.ByteString as B
 import EOT
 import SVG
-import System.Environment (getArgs)
 import System.FilePath
 import TTF hiding(str)
 import Utils
@@ -33,7 +32,7 @@ convert Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
   unless noEot (gen "eot" $ EOT.generate ttf input)
   unless noWoff (gen "woff" $ WOFF.generate ttf input)
   unless noSvg (gen "svg" $ SVG.generate ttf input)
-    where gen ext generator = B.writeFile (changeExtension ext filename) $ generator
+    where gen ext = B.writeFile (changeExtension ext filename)
 
 
 convertFiles :: Opts -> IO ()
