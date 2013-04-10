@@ -5,22 +5,43 @@ import EOT
 import SVG
 import System.Environment (getArgs)
 import System.FilePath
-import TTF
+import TTF hiding(str)
 import Utils
 import WOFF
+import Options.Applicative
+import Data.Monoid
 
-main :: IO ()
-main = do
-  inputs <- getArgs
-  forM_ inputs convert
+
+data Opts = Opts { noEot :: Bool
+                 , noWoff :: Bool
+                 , noSvg :: Bool
+                 , inputs :: [String]}
+
+optsDef :: Parser Opts
+optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
+          <*> switch (long "no-woff" <> help "Disable woff")
+          <*> switch (long "no-svg" <> help "Disable eot")
+          <*> arguments1 str (metavar "FONTS")
 
 changeExtension :: FilePath -> FilePath -> FilePath
 changeExtension ext = flip addExtension ext . dropExtension
 
-convert :: FilePath -> IO ()
-convert filename = do
+convert :: Opts -> FilePath -> IO ()
+convert Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
   input <- B.readFile filename
   let ttf = getResult $ runGet (parse input) input
-  B.writeFile (changeExtension "eot" filename) $ EOT.generate ttf input
-  B.writeFile (changeExtension "woff" filename) $ WOFF.generate ttf input
-  B.writeFile (changeExtension "svg" filename) $ SVG.generate ttf input
+  unless noEot (gen "eot" $ EOT.generate ttf input)
+  unless noWoff (gen "woff" $ WOFF.generate ttf input)
+  unless noSvg (gen "svg" $ SVG.generate ttf input)
+    where gen ext generator = B.writeFile (changeExtension ext filename) $ generator
+
+
+convertFiles :: Opts -> IO ()
+convertFiles opts@Opts{inputs = fonts} =
+  forM_ fonts $ convert opts
+
+main :: IO ()
+main = execParser opts >>= convertFiles
+  where
+    parser = helper <*> optsDef
+    opts = info parser mempty

@@ -29,5 +29,5 @@ toLazy str = BL.fromChunks  [str]
 diff :: Num b => [b] -> [b]
 diff l = map (\(a, b) -> a - b) $ zip l $ tail l
 
-debug str = do
+debug str =
   when True $ trace str $ return ()

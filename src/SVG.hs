@@ -5,7 +5,7 @@ module SVG(
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.Char
-import Data.List (find, findIndex)
+import Data.List (find, findIndex, foldl')
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import TTF
@@ -103,12 +103,12 @@ glyphPoints glyph _ =
   where endPts = sEndPtsOfCountours glyph
         pts = zip3 (map fromIntegral $ sXCoordinates glyph) (map fromIntegral $ sYCoordinates glyph) (map fromIntegral $ sFlags glyph)
         splitPts (ac, offset', pts') x = (ac ++ [take (x - offset') pts'], x, drop (x - offset') pts')
-        (bpts, _, _) = foldl splitPts ([], -1, pts) $ map fromIntegral endPts
+        (bpts, _, _) = foldl' splitPts ([], -1, pts) $ map fromIntegral endPts
 
 
 
 svgPath :: Glyf -> TTF -> String
-svgPath glyf ttf = foldl (++) "" $ map contourPath (glyphPoints glyf ttf)
+svgPath glyf ttf = foldl' (++) "" $ map contourPath (glyphPoints glyf ttf)
 
 svgGlyph :: TTF -> CmapTable -> Int -> Xml Elem
 svgGlyph ttf cmapTable code =

@@ -68,7 +68,7 @@ payload ttf font = do
   putULong $ ulCodePageRange1 os
   putULong $ ulCodePageRange2 os
   putULong $ checkSumAdjusment head'
-  _ <- replicateM 4 (putULong 0)
+  replicateM_ 4 (putULong 0)
   putUShort 0
   putNameStr name' 1
   putNameStr name' 2
