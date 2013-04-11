@@ -10,3 +10,4 @@ todo.org
 *.hi
 *.o
 src/Webify
+*.prof
