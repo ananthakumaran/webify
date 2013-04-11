@@ -60,11 +60,10 @@ contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
   "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour
   where (x', y', _) = Prelude.head contour
-        show x =
-          let formatted =  formatFloat 1 x
-          in if isSuffixOf ".0" formatted then formatFloat 0 x else formatted
+        show x | (fromIntegral floored) == x = Prelude.show floored
+               | otherwise = formatFloat 1 x
+          where floored = floor x :: Int
         formatFloat precision a = showFFloat (Just precision) a ""
-        {-# INLINE show #-}
         midval :: Double -> Double -> Double
         midval a b = a + (b - a) / 2
         onCurve flag = testBit flag 0
