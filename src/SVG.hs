@@ -5,13 +5,13 @@ module SVG(
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.Char
-import Data.List (find, findIndex, foldl')
+import Data.List (find, findIndex, foldl', isSuffixOf)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import TTF
 import Text.XML.Generator
-import Text.Printf
-import Data.String.Utils
+import Numeric
+import Data.Vector as V ((!), length, last)
 
 platformAppleUnicode = 0
 platformMacintosh = 1
@@ -52,37 +52,37 @@ advanceX :: Hmtx -> Int -> UFWord
 advanceX hmtx' id' =
   advanceWidth hMetric
   where hMetrics' = hMetrics hmtx'
-        hMetric | id' < Prelude.length hMetrics' = hMetrics' !! id'
-                | otherwise = last hMetrics'
-
-
+        hMetric | id' < V.length hMetrics' = hMetrics' ! id'
+                | otherwise = V.last hMetrics'
 
 
 contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
-  "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour ""
+  "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour
   where (x', y', _) = Prelude.head contour
         show x =
-          let formatted = printf "%.1f" x
-          in if endswith ".0" formatted then printf "%.0f" x else formatted
+          let formatted =  formatFloat 1 x
+          in if isSuffixOf ".0" formatted then formatFloat 0 x else formatted
+        formatFloat precision a = showFFloat (Just precision) a ""
+        {-# INLINE show #-}
         midval :: Double -> Double -> Double
         midval a b = a + (b - a) / 2
         onCurve flag = testBit flag 0
         ccontour = cycle contour
         second = Prelude.head . tail
         third = Prelude.head . tail . tail
-        path n ccontour' acc | n >= Prelude.length contour = acc ++ "Z"
+        path n ccontour' | n >= Prelude.length contour = "Z"
                    | otherwise =
                      let (x, y, f) = Prelude.head ccontour'
                          (x1, y1, f1) = second ccontour'
                          (x2, y2, f2) = third ccontour'
-                         next True True _ | x == x1 = path (n + 1) (tail ccontour') (acc ++ "V" ++ show y1)
-                                          | y == y1 = path (n + 1) (tail ccontour') (acc ++ "H" ++ show x1)
-                                          | otherwise = path (n + 1) (tail ccontour') (acc ++ "L" ++ show x1 ++ " " ++ show y1)
-                         next True False True = path (n + 2) (drop 2 ccontour') (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2)
-                         next True False False = path (n + 2) (drop 2 ccontour') (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2))
-                         next False False _ = path (n + 1) (tail ccontour') (acc ++ "T" ++ show (midval x x1) ++ " " ++ show (midval y y1))
-                         next False True _ = path (n + 1) (tail ccontour') (acc ++ "T" ++ show x1 ++ " " ++ show y1)
+                         next True True _ | x == x1 = ("V" ++ show y1) ++ (path (n + 1) (tail ccontour'))
+                                          | y == y1 = ("H" ++ show x1) ++ (path (n + 1) (tail ccontour'))
+                                          | otherwise = ("L" ++ show x1 ++ " " ++ show y1) ++ (path (n + 1) (tail ccontour'))
+                         next True False True = ("Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2) ++ (path (n + 2) (drop 2 ccontour') )
+                         next True False False = ("Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2)) ++ (path (n + 2) (drop 2 ccontour'))
+                         next False False _ = ("T" ++ show (midval x x1) ++ " " ++ show (midval y y1)) ++ (path (n + 1) (tail ccontour'))
+                         next False True _ = ("T" ++ show x1 ++ " " ++ show y1) ++ (path (n + 1) (tail ccontour'))
                          -- rest not implemented
                      in
                       next (onCurve f) (onCurve f1) (onCurve f2)
@@ -94,19 +94,18 @@ glyphPoints CompositeGlyf{cGlyfs = cglyfs} ttf =
   concatMap cglyhPoints cglyfs
   where
     cglyhPoints cg = map (map (transform cg)) (glyphPoints (glyf $ cGlyphIndex cg) ttf)
-    glyf index = glyfs ttf !! fromIntegral index
+    glyf index = glyfs ttf ! fromIntegral index
     transform cg (x, y, flag) =
       ((x * cXScale cg + y * cScale10 cg) + fromIntegral (cXoffset cg)
       , (y * cYScale cg + x * cScale01 cg) + fromIntegral (cYoffset cg)
       , flag)
 
 glyphPoints glyph _ =
-  bpts
-  where endPts = sEndPtsOfCountours glyph
-        pts = zip3 (map fromIntegral $ sXCoordinates glyph) (map fromIntegral $ sYCoordinates glyph) (map fromIntegral $ sFlags glyph)
-        splitPts (ac, offset', pts') x = (ac ++ [take (x - offset') pts'], x, drop (x - offset') pts')
-        (bpts, _, _) = foldl' splitPts ([], -1, pts) $ map fromIntegral endPts
-
+  reverse bpts
+  where endPts = map fromIntegral $ sEndPtsOfCountours glyph
+        pts = zipWith3 (\x y f -> (fromIntegral x, fromIntegral y, fromIntegral f)) (sXCoordinates glyph) (sYCoordinates glyph) (sFlags glyph)
+        splitPts (ac, offset', pts') x = ((take (x - offset') pts') : ac, x, drop (x - offset') pts')
+        (bpts, _, _) = foldl' splitPts ([], -1, pts) endPts
 
 
 svgPath :: Glyf -> TTF -> String
@@ -119,14 +118,14 @@ svgGlyph ttf cmapTable code =
                          xattr "d" $ svgPath glyph ttf
                         ])
   where glyphId' = glyphId cmapTable code
-        glyph = glyfs ttf !! glyphId'
+        glyph = glyfs ttf ! glyphId'
 
 
 missingGlyph :: TTF -> Xml Elem
 missingGlyph ttf  =
   xelem "missing-glyph" (xattrs [xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) 0,
                                  xattr "d" $ svgPath glyph ttf])
-  where glyph = glyfs ttf !! 0
+  where glyph = glyfs ttf ! 0
 
 
 validCharCode :: Int -> Bool

@@ -39,6 +39,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding
 import Data.Word
 import Utils
+import qualified Data.Vector as V
 
 type Byte = Word8
 type Char = Int8
@@ -236,7 +237,7 @@ data HMetric = HMetric { advanceWidth :: UFWord
                          , lsb :: FWord
                          } deriving (Show)
 
-data Hmtx = Hmtx { hMetrics :: [HMetric]
+data Hmtx = Hmtx { hMetrics :: V.Vector HMetric
                  , leftSideBearings :: [FWord]
                  } deriving (Show)
 
@@ -292,7 +293,7 @@ data TTF = TTF { version :: Fixed
                , maxp :: Maxp
                , loca :: Loca
                , hmtx :: Hmtx
-               , glyfs :: [Glyf]
+               , glyfs :: V.Vector Glyf
                } deriving (Show)
 
 
@@ -480,7 +481,7 @@ parseHMetric = do
 
 parseHmtx :: Int -> Int -> Map String TableDirectory -> B.ByteString -> Hmtx
 parseHmtx mcount glyphCount = parseTable "hmtx" (do
- hMetrics <- replicateM mcount parseHMetric
+ hMetrics <- liftM V.fromList $ replicateM mcount parseHMetric
  leftSideBearings <- replicateM (glyphCount - mcount) getShort
  return Hmtx{..})
 
@@ -703,6 +704,6 @@ parse font = do
       glyphCount = (fromIntegral $ numGlyphs maxp)
       loca = parseLoca (fromIntegral $ indexToLocFormat head) glyphCount tableDirectories font
       hmtx = parseHmtx (fromIntegral $ numberOfHMetrics hhea) glyphCount tableDirectories font
-      glyfs = parseGlyfs glyphCount (map fromIntegral $ locaOffsets loca) tableDirectories font
+      glyfs = V.fromList $ parseGlyfs glyphCount (map fromIntegral $ locaOffsets loca) tableDirectories font
     in
     return TTF{..}
