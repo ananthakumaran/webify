@@ -60,7 +60,7 @@ advanceX hmtx' id' =
 
 contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
-  "M" ++ show x' ++ " " ++ show y' ++ path 0 ""
+  "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour ""
   where (x', y', _) = Prelude.head contour
         show x =
           let formatted = printf "%.1f" x
@@ -69,18 +69,20 @@ contourPath contour =
         midval a b = a + (b - a) / 2
         onCurve flag = testBit flag 0
         ccontour = cycle contour
-        path n acc | n >= Prelude.length contour = acc ++ "Z"
+        second = Prelude.head . tail
+        third = Prelude.head . tail . tail
+        path n ccontour' acc | n >= Prelude.length contour = acc ++ "Z"
                    | otherwise =
-                     let (x, y, f) = ccontour !! n
-                         (x1, y1, f1) = ccontour !! (n + 1)
-                         (x2, y2, f2) = ccontour !! (n + 2)
-                         next True True _ | x == x1 = path (n + 1) (acc ++ "V" ++ show y1)
-                                          | y == y1 = path (n + 1) (acc ++ "H" ++ show x1)
-                                          | otherwise = path (n + 1) (acc ++ "L" ++ show x1 ++ " " ++ show y1)
-                         next True False True = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2)
-                         next True False False = path (n + 2) (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2))
-                         next False False _ = path (n + 1) (acc ++ "T" ++ show (midval x x1) ++ " " ++ show (midval y y1))
-                         next False True _ = path (n + 1) (acc ++ "T" ++ show x1 ++ " " ++ show y1)
+                     let (x, y, f) = Prelude.head ccontour'
+                         (x1, y1, f1) = second ccontour'
+                         (x2, y2, f2) = third ccontour'
+                         next True True _ | x == x1 = path (n + 1) (tail ccontour') (acc ++ "V" ++ show y1)
+                                          | y == y1 = path (n + 1) (tail ccontour') (acc ++ "H" ++ show x1)
+                                          | otherwise = path (n + 1) (tail ccontour') (acc ++ "L" ++ show x1 ++ " " ++ show y1)
+                         next True False True = path (n + 2) (drop 2 ccontour') (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2)
+                         next True False False = path (n + 2) (drop 2 ccontour') (acc ++ "Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2))
+                         next False False _ = path (n + 1) (tail ccontour') (acc ++ "T" ++ show (midval x x1) ++ " " ++ show (midval y y1))
+                         next False True _ = path (n + 1) (tail ccontour') (acc ++ "T" ++ show x1 ++ " " ++ show y1)
                          -- rest not implemented
                      in
                       next (onCurve f) (onCurve f1) (onCurve f2)
