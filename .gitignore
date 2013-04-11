@@ -7,3 +7,6 @@ dist/
 ttfdump*
 Makefile
 todo.org
+*.hi
+*.o
+src/Webify
