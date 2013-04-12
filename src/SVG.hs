@@ -5,21 +5,13 @@ module SVG(
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.Char
-import Data.List (find, findIndex, foldl', isSuffixOf)
+import Data.List (find, foldl')
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import TTF
 import Text.XML.Generator
 import Numeric
 import Data.Vector as V ((!), length, last)
-
-platformAppleUnicode = 0
-platformMacintosh = 1
-platformISO = 2
-platformMicrosoft = 3
-
-encodingUndefined = 0
-encodingUGL = 1
 
 byNameId :: UShort -> TTF -> T.Text
 byNameId id' ttf =
@@ -29,14 +21,6 @@ byNameId id' ttf =
 
 fontFamilyName :: TTF -> T.Text
 fontFamilyName = byNameId 1
-
-cmapTableFind :: TTF -> UShort -> UShort -> CmapTable
-cmapTableFind ttf platformId' encodingId' =
-  subTables (cmap ttf) !! index
-  where directories = encodingDirectories $ cmap ttf
-        index = fromJust $ findIndex predicate directories
-        predicate dr = cmapPlatformId dr == platformId' &&
-                       cmapEncodingId dr == encodingId'
 
 svgDocType :: String
 svgDocType = "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\" >"
@@ -141,11 +125,10 @@ validCharCode n | n == 0x9 = True
                 | n >= 0x1000 && n <= 0x10FFFF = True
                 | otherwise = False
 
-svgGlyphs :: TTF -> Xml Elem
-svgGlyphs ttf =
+svgGlyphs :: TTF -> CmapTable -> Xml Elem
+svgGlyphs ttf cmapTable=
   xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
-  where cmapTable = cmapTableFind ttf platformMicrosoft encodingUGL
-        codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
+  where codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
         validGlyph code = validCharCode code && glyphId cmapTable code > 1
 
 fontFace :: TTF -> Xml Elem
@@ -167,19 +150,18 @@ testText ttf =
     text t i = xelem "text" (xattrs [xattr "x" "20",
                                      xattr "y" $ show (i * 50)] <#> xtext t)
 
-svgbody :: TTF -> Xml Elem
-svgbody ttf =
+svgbody :: TTF -> CmapTable -> Xml Elem
+svgbody ttf cmapTable =
   xelems [xelemEmpty "metadata",
           xelem "defs" $
           xelem "font" (xattrs [xattr "horiz-adv-x" $ show $ xAvgCharWidth $ os2 ttf] <#>
                         xelems [fontFace ttf,
-                                svgGlyphs ttf]),
+                                svgGlyphs ttf cmapTable]),
           testText ttf]
 
-
-
-generate :: TTF -> B.ByteString -> B.ByteString
-generate ttf _font =
-  let svg = doc svgDocInfo $
-            xelem "svg" (xattr "xmlns" "http://www.w3.org/2000/svg" <#> svgbody ttf)
-  in xrender svg
+generate :: TTF -> B.ByteString -> CmapTable -> B.ByteString
+generate ttf _font cmapTable =
+  xrender svg
+  where
+    svg = doc svgDocInfo $
+          xelem "svg" (xattr "xmlns" "http://www.w3.org/2000/svg" <#> svgbody ttf cmapTable)

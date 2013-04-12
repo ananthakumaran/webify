@@ -23,6 +23,7 @@ module TTF(
   , glyphId
   , cmapStart
   , cmapEnd
+  , cmapTableFind
 ) where
 
 import Control.Monad
@@ -296,6 +297,14 @@ data TTF = TTF { version :: Fixed
                , glyfs :: V.Vector Glyf
                } deriving (Show)
 
+
+cmapTableFind :: TTF -> UShort -> UShort -> CmapTable
+cmapTableFind ttf platformId' encodingId' =
+  subTables (cmap ttf) !! index
+  where directories = encodingDirectories $ cmap ttf
+        index = fromJust $ findIndex predicate directories
+        predicate dr = cmapPlatformId dr == platformId' &&
+                       cmapEncodingId dr == encodingId'
 
 
 cmapStart :: CmapTable -> Int
