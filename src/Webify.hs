@@ -9,7 +9,7 @@ import Utils
 import WOFF
 import Options.Applicative
 import Data.Monoid
-import System.IO
+import Data.Maybe
 
 platformAppleUnicode = 0
 platformMacintosh = 1
@@ -101,8 +101,16 @@ convertFiles :: Opts -> IO ()
 convertFiles opts@Opts{inputs = fonts} =
   forM_ fonts $ convert opts
 
+webifyVersion = "0.1.0.0"
+
 main :: IO ()
-main = execParser opts >>= convertFiles
+main = do
+  opts <- execParser optsSpec
+  if isJust opts then
+    convertFiles $ fromJust opts
+    else
+    putStrLn $ "webify " ++ webifyVersion
   where
-    parser = helper <*> optsDef
-    opts = info parser mempty
+    parser = flag' Nothing (long "version" <> help "Display version") <|> (Just <$> optsDef)
+    optsSpec = info (helper <*> parser) mempty
+
