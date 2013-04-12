@@ -31,16 +31,17 @@ import Data.Binary.Strict.Get
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (unpack)
-import Data.Text.Encoding.Error
 import Data.Int
 import Data.List
 import Data.Map hiding(map, findIndex)
+import Data.Maybe
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Data.Text.Encoding
+import Data.Text.Encoding.Error
+import qualified Data.Vector as V
 import Data.Word
 import Utils
-import qualified Data.Vector as V
 
 type Byte = Word8
 type Char = Int8
@@ -81,7 +82,10 @@ getUFWord = getUShort
 getUFixed :: Get Double
 getUFixed = liftM ((/ 0x4000) . fromIntegral) getShort
 
-
+data F12Group = F12Group { f12StartCharCode :: ULong
+                         , f12EndCharCode :: ULong
+                         , f12StartGlyphId :: ULong
+                         } deriving (Show)
 
 data CmapTable = CmapFormat0 { c0Format :: UShort
                              , c0Length :: UShort
@@ -108,7 +112,13 @@ data CmapTable = CmapFormat0 { c0Format :: UShort
                              , c6FirstCode :: UShort
                              , c6EntryCount :: UShort
                              , c6GlyphIds :: [UShort]
-                             } deriving(Show)
+                             } |
+                 CmapFormat12 { c12Format :: Fixed
+                              , c12Length :: ULong
+                              , c12Language :: ULong
+                              , c12NGroups :: ULong
+                              , c12Groups :: [F12Group]
+                              } deriving (Show)
 
 
 data CmapEncodingDirectory = CmapEncodingDirectory { cmapPlatformId :: UShort
@@ -311,12 +321,14 @@ cmapStart :: CmapTable -> Int
 cmapStart CmapFormat0{c0GlyphIDs = glyphIds} = fromJust $ findIndex (> 0) glyphIds
 cmapStart CmapFormat4{c4StartCodes = startCodes} = fromIntegral $ minimum startCodes
 cmapStart CmapFormat6{c6FirstCode = firstCode} = fromIntegral firstCode
+cmapStart CmapFormat12{c12Groups = groups} = fromIntegral $ f12StartCharCode $ Prelude.head groups
 
 cmapEnd :: CmapTable -> Int
 cmapEnd CmapFormat0{c0GlyphIDs = glyphIds} = last $ findIndices (> 0) glyphIds
 cmapEnd CmapFormat4{c4EndCodes = endCodes} = fromIntegral $ maximum endCodes
 cmapEnd CmapFormat6{c6FirstCode = firstCode,
                     c6EntryCount = entryCount} = fromIntegral $ firstCode + entryCount
+cmapEnd CmapFormat12{c12Groups = groups} = fromIntegral $ f12EndCharCode $ last groups
 
 
 glyphId :: CmapTable -> Int -> Int
@@ -343,6 +355,14 @@ glyphId CmapFormat6{c6GlyphIds = glyphIds,
                                                     | otherwise = 0
   where start = fromIntegral firstCode
         end = start + fromIntegral entryCount
+glyphId CmapFormat12{c12Groups = groups} n' | start <= n && (not $ start == -1) = glyphId'
+                                            | otherwise = 0
+  where
+    n = fromIntegral n'
+    mg = find ((>= n) . f12EndCharCode) groups
+    g = fromJust mg
+    start = fromMaybe (-1) (liftM f12StartCharCode mg)
+    glyphId' = fromIntegral $ (f12StartGlyphId g) + (n - f12StartCharCode g)
 
 
 parseTableDirectory :: B.ByteString -> Get TableDirectory
@@ -661,7 +681,6 @@ parseCmapSubTable 0 = do
   c0GlyphIDs <- replicateM 256 getByte
   return CmapFormat0{c0Format = 0, ..}
 
-
 parseCmapSubTable 6 = do
   c6Length <- getUShort
   c6Version <- getUShort
@@ -669,6 +688,19 @@ parseCmapSubTable 6 = do
   c6EntryCount <- getUShort
   c6GlyphIds <- replicateM (fromIntegral c6EntryCount) getUShort
   return CmapFormat6{c6Format = 6, ..}
+
+parseCmapSubTable 12 = do
+  _ <- getUShort
+  c12Length <- getULong
+  c12Language <- getULong
+  c12NGroups <- getULong
+  c12Groups <- replicateM (fromIntegral c12NGroups) parseF12Group
+  return CmapFormat12{c12Format = 12, ..}
+  where parseF12Group = do
+          f12StartCharCode <- getULong
+          f12EndCharCode <- getULong
+          f12StartGlyphId <- getULong
+          return F12Group{..}
 
 parseCmapSubTable n = error $ "subtable format not implemented " ++ show n
 
