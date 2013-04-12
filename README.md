@@ -14,6 +14,8 @@ A command line tool to convert ttf file to woff, eot & svg files
 
 [windows](https://sourceforge.net/projects/webify/files/windows/webify.exe/download)
 
+[old versions](https://sourceforge.net/projects/webify/files/)
+
 
 ## CSS @font-face template
 
