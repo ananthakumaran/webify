@@ -129,7 +129,7 @@ svgGlyphs :: TTF -> CmapTable -> Xml Elem
 svgGlyphs ttf cmapTable=
   xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
   where codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
-        validGlyph code = validCharCode code && glyphId cmapTable code > 1
+        validGlyph code = validCharCode code && glyphId cmapTable code > 0
 
 fontFace :: TTF -> Xml Elem
 fontFace ttf =
