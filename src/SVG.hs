@@ -99,11 +99,22 @@ glyphPoints glyph _ =
 svgPath :: Glyf -> TTF -> String
 svgPath glyf ttf = foldl' (++) "" $ map contourPath (glyphPoints glyf ttf)
 
+
+escapeXMLChar :: Char -> String
+escapeXMLChar '<' = "&lt;"
+escapeXMLChar '>' = "&gt;"
+escapeXMLChar '&' = "&amp;"
+escapeXMLChar '"' = "&quot;"
+escapeXMLChar '\'' = "&#39;"
+escapeXMLChar c | (oc <= 0x7f && isPrint c) = [c]
+                | otherwise = "&#x" ++ showHex oc "" ++ ";"
+  where oc = ord c
+
 svgGlyph :: TTF -> CmapTable -> Int -> Xml Elem
 svgGlyph ttf cmapTable code =
-  xelem "glyph" (xattrs [xattr "unicode" [chr code],
-                         xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) glyphId',
-                         xattr "d" $ svgPath glyph ttf
+  xelem "glyph" (xattrs [xattrRaw "unicode" (escapeXMLChar $ chr code),
+                         xattrRaw "horiz-adv-x" $ show $ advanceX (hmtx ttf) glyphId',
+                         xattrRaw "d" $ svgPath glyph ttf
                         ])
   where glyphId' = glyphId cmapTable code
         glyph = glyfs ttf ! glyphId'
