@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import TTF
 import Text.XML.Generator
 import Numeric
+import Utils
 import Data.Vector as V ((!), length, last)
 
 byNameId :: UShort -> TTF -> T.Text
@@ -106,18 +107,20 @@ escapeXMLChar '>' = "&gt;"
 escapeXMLChar '&' = "&amp;"
 escapeXMLChar '"' = "&quot;"
 escapeXMLChar '\'' = "&#39;"
-escapeXMLChar c | (oc <= 0x7f && isPrint c) = [c]
+escapeXMLChar c | oc <= 0x7f && isPrint c = [c]
                 | otherwise = "&#x" ++ showHex oc "" ++ ";"
   where oc = ord c
 
-svgGlyph :: TTF -> CmapTable -> Int -> Xml Elem
-svgGlyph ttf cmapTable code =
-  xelem "glyph" (xattrs [xattrRaw "unicode" (escapeXMLChar $ chr code),
-                         xattrRaw "horiz-adv-x" $ show $ advanceX (hmtx ttf) glyphId',
-                         xattrRaw "d" $ svgPath glyph ttf
-                        ])
+svgGlyph :: TTF -> CmapTable -> Int -> Int -> Xml Elem
+svgGlyph ttf cmapTable averageAdvanceX code =
+  xelem "glyph" (xattrs ([xattrRaw "unicode" (escapeXMLChar $ chr code)] ++
+                         horizAdvanceXAttr ++
+                         [xattrRaw "d" $ svgPath glyph ttf]))
   where glyphId' = glyphId cmapTable code
         glyph = glyfs ttf ! glyphId'
+        horizAdvanceX = fromIntegral $ advanceX (hmtx ttf) glyphId'
+        horizAdvanceXAttr | horizAdvanceX == averageAdvanceX = []
+                          | otherwise = [xattrRaw "horiz-adv-x" $ show horizAdvanceX]
 
 
 missingGlyph :: TTF -> Xml Elem
@@ -136,11 +139,13 @@ validCharCode n | n == 0x9 = True
                 | n >= 0x1000 && n <= 0x10FFFF = True
                 | otherwise = False
 
-svgGlyphs :: TTF -> CmapTable -> Xml Elem
+svgGlyphs :: TTF -> CmapTable -> (Xml Elem, Int)
 svgGlyphs ttf cmapTable=
-  xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable) (filter validGlyph codeRange)
+  (xelems $ missingGlyph ttf : map (svgGlyph ttf cmapTable averageAdvanceX) validGlyphCodes, averageAdvanceX)
   where codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
         validGlyph code = validCharCode code && glyphId cmapTable code > 0
+        validGlyphCodes = filter validGlyph codeRange
+        averageAdvanceX = maxDuplicate $ map (fromIntegral . advanceX (hmtx ttf) . glyphId cmapTable) validGlyphCodes
 
 fontFace :: TTF -> Xml Elem
 fontFace ttf =
@@ -165,10 +170,11 @@ svgbody :: TTF -> CmapTable -> Xml Elem
 svgbody ttf cmapTable =
   xelems [xelemEmpty "metadata",
           xelem "defs" $
-          xelem "font" (xattrs [xattr "horiz-adv-x" $ show $ xAvgCharWidth $ os2 ttf] <#>
+          xelem "font" (xattrs [xattr "horiz-adv-x" $ show avgAdvanceX] <#>
                         xelems [fontFace ttf,
-                                svgGlyphs ttf cmapTable]),
+                                glyps]),
           testText ttf]
+  where (glyps, avgAdvanceX) = svgGlyphs ttf cmapTable
 
 generate :: TTF -> B.ByteString -> CmapTable -> B.ByteString
 generate ttf _font cmapTable =

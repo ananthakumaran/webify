@@ -6,6 +6,7 @@ module Utils(
   , diff
   , debug
   , formatTable
+  , maxDuplicate
 ) where
 
 import qualified Data.ByteString as B
@@ -14,6 +15,7 @@ import Control.Monad
 import Debug.Trace
 import Data.List
 import Text.Printf
+import Data.Function
 
 
 getResult :: (Either String t2, t) -> t2
@@ -40,6 +42,9 @@ formatTable table =
         formatRow row = intercalate " | " $ zipWith formatCell row maxSize
         formatCell :: String -> Int -> String
         formatCell field size = printf ("%-" ++ show size ++ "s") field
+
+maxDuplicate :: [Int] -> Int
+maxDuplicate = head . head . sortBy (compare `on` (negate . length)) . group . sort
 
 debug str =
   when True $ trace str $ return ()
