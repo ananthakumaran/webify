@@ -35,7 +35,6 @@ import Data.Int
 import Data.List
 import Data.Map hiding(map, findIndex)
 import Data.Maybe
-import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
@@ -355,14 +354,14 @@ glyphId CmapFormat6{c6GlyphIds = glyphIds,
                                                     | otherwise = 0
   where start = fromIntegral firstCode
         end = start + fromIntegral entryCount
-glyphId CmapFormat12{c12Groups = groups} n' | start <= n && (not $ start == -1) = glyphId'
+glyphId CmapFormat12{c12Groups = groups} n' | start <= n && (start /= -1) = glyphId'
                                             | otherwise = 0
   where
     n = fromIntegral n'
     mg = find ((>= n) . f12EndCharCode) groups
     g = fromJust mg
     start = fromMaybe (-1) (liftM f12StartCharCode mg)
-    glyphId' = fromIntegral $ (f12StartGlyphId g) + (n - f12StartCharCode g)
+    glyphId' = fromIntegral $ f12StartGlyphId g + (n - f12StartCharCode g)
 
 
 parseTableDirectory :: B.ByteString -> Get TableDirectory
