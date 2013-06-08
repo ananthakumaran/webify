@@ -8,6 +8,7 @@ require 'erb'
 BIN = "dist/build/webify/webify"
 GENERATED_EXTS = %w[woff eot svg]
 FONT_EXTS = [['ttf', 'truetype'], ['woff', 'woff'], ['svg', 'svg'], ['eot', 'embedded-opentype']]
+WOFF_VALIDATE='fonts/woff_validate'
 
 def exec_with_timeout(cmd, timeout)
   pid = Process.spawn(cmd, {:pgroup => true})
@@ -27,6 +28,12 @@ def change_extension(path, ext)
   path.gsub(/.ttf$/, ".#{ext}")
 end
 
+def woff_validate(font)
+  unless exec_with_timeout("#{WOFF_VALIDATE} generated_fonts/#{font}", 2)
+    puts "woff validation failed #{font}"
+  end
+end
+
 successfully_converted = []
 total = 0
 
@@ -39,6 +46,7 @@ Dir.glob "test_fonts/*.ttf" do |font|
     successfully_converted << font
     FileUtils.mv(generated_fonts, "generated_fonts")
     FileUtils.cp(font, "generated_fonts")
+    woff_validate(change_extension(Pathname.new(font).basename.to_s, 'woff'))
   else
     puts "failed"
     FileUtils.rm_f(generated_fonts)
