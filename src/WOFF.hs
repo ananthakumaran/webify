@@ -9,8 +9,10 @@ import qualified Data.ByteString as B
 import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import Data.Word
+import Data.List
 import TTF hiding(head)
 import Utils
+import Data.Function
 
 
 type UInt32 = Word32
@@ -28,7 +30,7 @@ putTableDirectory ((startOffset, size, _padding, _compressedData), directory) = 
   putByteString $ pack $ tag directory
   putUInt32 $ fromIntegral startOffset
   putUInt32 $ fromIntegral size
-  putUInt32 $ fromIntegral $ B.length $ rawData directory
+  putUInt32 $ fromIntegral $ TTF.length directory
   putUInt32 $ checkSum directory
 
 
@@ -56,20 +58,22 @@ putFontData (_, _, padding, compressedData) = do
 payload :: TTF -> B.ByteString -> Put
 payload ttf font = do
   putUInt16 $ numTables ttf
-  putUInt16 0
+  putUInt16 0 -- reserved
   putUInt32 $ fromIntegral $ B.length font
-  putUInt16 1
-  putUInt16 0
+  putUInt16 1 -- woff version major
+  putUInt16 0 -- woff version minor
   putUInt32 0 -- meta offset
   putUInt32 0 -- meta length
   putUInt32 0 -- meta length uncompressed
   putUInt32 0 -- private block offset
   putUInt32 0 -- private block length
   let tds = Map.elems $ tableDirectories ttf
+      sortByOffset = sortBy (compare `on` offset)
+      sortedByTag = sortBy (compare `on` tag . snd)
       initialOffset = [(fromIntegral (44 + (20 * numTables ttf)), 0, 0, pack "")]
       offsets = drop 1 $ reverse $
-                foldl calculateOffset initialOffset (map rawData tds)
-  mapM_ putTableDirectory (zip offsets tds)
+                foldl calculateOffset initialOffset (map rawData $ sortByOffset tds)
+  mapM_ putTableDirectory $ sortedByTag $ zip offsets (sortByOffset tds)
   mapM_ putFontData offsets
 
 
