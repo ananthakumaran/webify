@@ -101,7 +101,7 @@ convertFiles :: Opts -> IO ()
 convertFiles opts@Opts{inputs = fonts} =
   forM_ fonts $ convert opts
 
-webifyVersion = "0.1.2.0"
+webifyVersion = "0.1.3.0"
 
 main :: IO ()
 main = do
