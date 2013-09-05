@@ -41,16 +41,21 @@ advanceX hmtx' id' =
                 | otherwise = V.last hMetrics'
 
 
+formatCoordinate :: Double -> String
+formatCoordinate x
+  | fromIntegral floored == x = show floored
+  | otherwise = formatFloat 1 x
+  where floored = floor x :: Int
+        formatFloat precision a = showFFloat (Just precision) a ""
+
+midval :: Double -> Double -> Double
+midval a b = a + (b - a) / 2
+
 contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
   "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour
   where (x', y', _) = Prelude.head contour
-        show x | (fromIntegral floored) == x = Prelude.show floored
-               | otherwise = formatFloat 1 x
-          where floored = floor x :: Int
-        formatFloat precision a = showFFloat (Just precision) a ""
-        midval :: Double -> Double -> Double
-        midval a b = a + (b - a) / 2
+        show = formatCoordinate
         onCurve flag = testBit flag 0
         ccontour = cycle contour
         second = Prelude.head . tail
