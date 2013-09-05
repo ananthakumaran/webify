@@ -11,3 +11,5 @@ todo.org
 *.o
 src/Webify
 *.prof
+.cabal-sandbox
+cabal.sandbox.config
