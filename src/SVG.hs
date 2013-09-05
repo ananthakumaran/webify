@@ -5,7 +5,7 @@ module SVG(
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.Char
-import Data.List (find, foldl')
+import Data.List (find, foldl', intercalate)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import TTF
@@ -48,35 +48,52 @@ formatCoordinate x
   where floored = floor x :: Int
         formatFloat precision a = showFFloat (Just precision) a ""
 
+formatCoordinates :: Double -> Double -> String
+formatCoordinates x y = formatCoordinate x ++ " " ++ formatCoordinate y
+
 midval :: Double -> Double -> Double
 midval a b = a + (b - a) / 2
 
+toUpcase :: String -> String
+toUpcase = map toUpper
+
+shortestPath :: String -> [(String, String)] -> String
+shortestPath command coordinates
+  | Prelude.length relative < Prelude.length absolute = command ++ relative
+  | otherwise = toUpcase command ++ absolute
+  where relative = intercalate " " (map fst coordinates)
+        absolute = intercalate " " (map snd coordinates)
+
+
 contourPath :: [(Double, Double, Int)] -> String
 contourPath contour =
-  "M" ++ show x' ++ " " ++ show y' ++ path 0 ccontour
+  "M" ++ formatCoordinates x' y' ++ path 0 ccontour x' y'
   where (x', y', _) = Prelude.head contour
-        show = formatCoordinate
         onCurve flag = testBit flag 0
         ccontour = cycle contour
         second = Prelude.head . tail
         third = Prelude.head . tail . tail
-        path n ccontour' | n >= Prelude.length contour = "Z"
+        path n ccontour' lastx lasty | n >= Prelude.length contour = "Z"
                    | otherwise =
                      let (x, y, f) = Prelude.head ccontour'
                          (x1, y1, f1) = second ccontour'
                          (x2, y2, f2) = third ccontour'
-                         next True True _ | x == x1 = ("V" ++ show y1) ++ rest
-                                          | y == y1 = ("H" ++ show x1) ++ rest
-                                          | otherwise = ("L" ++ show x1 ++ " " ++ show y1) ++ rest
-                           where rest = path (n + 1) (tail ccontour')
-                         next True False True = ("Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show x2 ++ " " ++ show y2) ++ rest
-                           where rest = path (n + 2) (drop 2 ccontour')
-                         next True False False = ("Q" ++ show x1 ++ " " ++ show y1 ++ " " ++ show  (midval x1 x2) ++ " " ++ show (midval y1 y2)) ++ rest
-                           where rest = path (n + 2) (drop 2 ccontour')
-                         next False False _ = ("T" ++ show (midval x x1) ++ " " ++ show (midval y y1)) ++ rest
-                           where rest = path (n + 1) (tail ccontour')
-                         next False True _ = ("T" ++ show x1 ++ " " ++ show y1) ++ rest
-                           where rest = path (n + 1) (tail ccontour')
+                         showx x = (formatCoordinate (x - lastx), formatCoordinate x)
+                         showy y = (formatCoordinate (y - lasty), formatCoordinate y)
+                         showxy x y = (formatCoordinates (x - lastx) (y - lasty), formatCoordinates x y)
+                         sp = shortestPath
+                         without i = path (n + i) (drop i ccontour')
+                         next True True _ | x == x1 = (sp "v" [showy y1]) ++ rest
+                                          | y == y1 = (sp "h" [showx x1]) ++ rest
+                                          | otherwise = (sp "l" [showxy x1 y1]) ++ rest
+                           where rest = without 1 x1 y1
+                         next True False True = (sp "q" [showxy x1 y1, showxy x2 y2]) ++ without 2 x2 y2
+                         next True False False = (sp "q" [showxy x1 y1, showxy (midval x1 x2) (midval y1 y2)]) ++ rest
+                           where rest = without 2 (midval x1 x2) (midval y1 y2)
+                         next False False _ = (sp "t" [showxy (midval x x1) (midval y y1)]) ++ rest
+                           where rest = without 1 (midval x x1) (midval y y1)
+                         next False True _ = (sp "t" [showxy x1 y1]) ++ rest
+                           where rest = without 1 x1 y1
                          -- rest not implemented
                      in
                       next (onCurve f) (onCurve f1) (onCurve f2)
