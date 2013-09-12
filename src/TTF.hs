@@ -513,8 +513,6 @@ parseHmtx mcount glyphCount = parseTable "hmtx" (do
  leftSideBearings <- replicateM (glyphCount - mcount) getShort
  return Hmtx{..})
 
-
-
 parseFlags :: Int -> [Byte] -> Get [Byte]
 parseFlags n a | n <= 0 = return a
                | otherwise = do
@@ -526,24 +524,27 @@ parseFlags n a | n <= 0 = return a
     else
     parseFlags (n - 1) $ a ++ [flag]
 
-parseCoordinates ::
+parseCoordinate ::
   Int -> Int -> (Short, [Short]) -> Byte -> Get (Short, [Short])
-parseCoordinates shortBit sameBit (current, ac) flag
+parseCoordinate shortBit sameBit (current, ac) flag
   | testBit flag shortBit = do
     delta <- liftM fromIntegral getByte
     return (if testBit flag sameBit then
-              (current + delta, ac ++ [current + delta])
+              (current + delta, current + delta : ac)
             else
-              (current - delta, ac ++ [current - delta]))
+              (current - delta, current - delta : ac))
   | otherwise =
     if testBit flag sameBit then
-      return (current, ac ++ [current])
+      return (current, current : ac)
       else
       do
         delta <- getShort
-        return (current + delta, ac ++ [current + delta])
+        return (current + delta, current + delta : ac)
 
 
+parseCoordinates :: [Byte] -> Int -> Int -> Get [Short]
+parseCoordinates flags shortBit sameBit = do
+  liftM (reverse . snd) $ foldM (parseCoordinate shortBit sameBit) (0, []) flags
 
 parseCompositeGlyfElement :: Get CompositeGlyfElement
 parseCompositeGlyfElement = do
@@ -596,8 +597,8 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
   sInstructions <- replicateM (fromIntegral sInstructionLength) getByte
   let count = if numberOfContours == 0 then 0 else fromIntegral $ last sEndPtsOfCountours + 1
   sFlags <- parseFlags count []
-  sXCoordinates <- liftM snd $ foldM (parseCoordinates 1 4) (0, []) sFlags
-  sYCoordinates <- liftM snd $ foldM (parseCoordinates 2 5) (0, []) sFlags
+  sXCoordinates <- parseCoordinates sFlags 1 4
+  sYCoordinates <- parseCoordinates sFlags 2 5
   return SimpleGlyf{sNumberOfContours = numberOfContours, ..}
                            | otherwise = do
   cXMin <- getFWord
