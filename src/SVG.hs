@@ -61,8 +61,8 @@ shortestPath :: String -> [(String, String)] -> String
 shortestPath command coordinates
   | Prelude.length relative < Prelude.length absolute = command ++ relative
   | otherwise = toUpcase command ++ absolute
-  where relative = intercalate " " (map fst coordinates)
-        absolute = intercalate " " (map snd coordinates)
+  where relative = unwords (map fst coordinates)
+        absolute = unwords (map snd coordinates)
 
 
 contourPath :: [(Double, Double, Int)] -> String
@@ -83,16 +83,16 @@ contourPath contour =
                          showxy x y = (formatCoordinates (x - lastx) (y - lasty), formatCoordinates x y)
                          sp = shortestPath
                          without i = path (n + i) (drop i ccontour')
-                         next True True _ | x == x1 = (sp "v" [showy y1]) ++ rest
-                                          | y == y1 = (sp "h" [showx x1]) ++ rest
-                                          | otherwise = (sp "l" [showxy x1 y1]) ++ rest
+                         next True True _ | x == x1 = sp "v" [showy y1] ++ rest
+                                          | y == y1 = sp "h" [showx x1] ++ rest
+                                          | otherwise = sp "l" [showxy x1 y1] ++ rest
                            where rest = without 1 x1 y1
-                         next True False True = (sp "q" [showxy x1 y1, showxy x2 y2]) ++ without 2 x2 y2
-                         next True False False = (sp "q" [showxy x1 y1, showxy (midval x1 x2) (midval y1 y2)]) ++ rest
+                         next True False True = sp "q" [showxy x1 y1, showxy x2 y2] ++ without 2 x2 y2
+                         next True False False = sp "q" [showxy x1 y1, showxy (midval x1 x2) (midval y1 y2)] ++ rest
                            where rest = without 2 (midval x1 x2) (midval y1 y2)
-                         next False False _ = (sp "t" [showxy (midval x x1) (midval y y1)]) ++ rest
+                         next False False _ = sp "t" [showxy (midval x x1) (midval y y1)] ++ rest
                            where rest = without 1 (midval x x1) (midval y y1)
-                         next False True _ = (sp "t" [showxy x1 y1]) ++ rest
+                         next False True _ = sp "t" [showxy x1 y1] ++ rest
                            where rest = without 1 x1 y1
                          -- rest not implemented
                      in
