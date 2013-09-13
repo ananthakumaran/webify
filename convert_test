@@ -58,6 +58,10 @@ end
 template = ERB.new <<EOT
 <html>
 <style>
+body {
+ text-rendering: optimizeLegibility;
+}
+
 <% fonts.each do |font| %>
   <% FONT_EXTS.each do |ext, format| %>
    @font-face {
