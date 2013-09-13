@@ -543,7 +543,7 @@ parseCoordinate shortBit sameBit (current, ac) flag
 
 
 parseCoordinates :: [Byte] -> Int -> Int -> Get [Short]
-parseCoordinates flags shortBit sameBit = do
+parseCoordinates flags shortBit sameBit =
   liftM (reverse . snd) $ foldM (parseCoordinate shortBit sameBit) (0, []) flags
 
 parseCompositeGlyfElement :: Get CompositeGlyfElement

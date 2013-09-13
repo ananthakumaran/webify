@@ -37,6 +37,7 @@ optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
 changeExtension :: FilePath -> FilePath -> FilePath
 changeExtension ext = flip addExtension ext . dropExtension
 
+cmapDescription :: (Integral a) => a -> a -> String
 cmapDescription 0 0 = "Unicode 1.0 semantics"
 cmapDescription 0 1 = "Unicode 1.1 semantics"
 cmapDescription 0 2 = "ISO/IEC 10646 semantics"
@@ -63,7 +64,7 @@ cmapDescription _ _ = "Unknown"
 
 showCmap :: Cmap -> String
 showCmap cmap' =
-  formatTable $ header : (map pluck $ encodingDirectories cmap')
+  formatTable $ header : map pluck (encodingDirectories cmap')
   where header = ["PlatformId", "EncodingId", "Description"]
         pluck dir = [show $ cmapPlatformId dir, show $ cmapEncodingId dir, cmapDescription (cmapPlatformId dir) (cmapEncodingId dir)]
 
@@ -106,10 +107,7 @@ webifyVersion = "0.1.3.0"
 main :: IO ()
 main = do
   opts <- execParser optsSpec
-  if isJust opts then
-    convertFiles $ fromJust opts
-    else
-    putStrLn $ "webify " ++ webifyVersion
+  maybe (putStrLn $ "webify " ++ webifyVersion) convertFiles opts
   where
     parser = flag' Nothing (long "version" <> help "Display version") <|> (Just <$> optsDef)
     optsSpec = info (helper <*> parser) mempty
