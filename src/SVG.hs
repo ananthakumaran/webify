@@ -8,6 +8,7 @@ import Data.Char
 import Data.List (find, foldl', intercalate)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
+import qualified Data.Map as M
 import TTF
 import Text.XML.Generator
 import Numeric
@@ -177,6 +178,33 @@ fontFace ttf =
                              xattr "descent" $ show . descender $ hhea ttf])
 
 
+svgKern :: M.Map Int [Int] -> KernPair -> Xml Elem
+svgKern glyphIdToCodeMap KernPair{kpLeft = left, kpRight = right,
+               kpValue = value, kTCoverage = coverage} =
+  xelem ktype (xattrs [xattrRaw "u1" $ unicode left,
+                         xattrRaw "u2" $ unicode right,
+                         xattr "k" $ show (-value)])
+  where unicode code = intercalate "," $ map (escapeXMLChar . chr . fromIntegral) (glyphIdToCodeMap M.! fromIntegral code)
+        ktype = if testBit coverage 0 then "hkern" else "vkern"
+
+glyphIdToCode :: CmapTable -> M.Map Int [Int]
+glyphIdToCode cmapTable =
+  foldl build M.empty codeRange
+  where codeRange = [(cmapStart cmapTable)..(cmapEnd cmapTable)]
+        build m code | gid > 0 = M.alter (addCode code) gid m
+                     | otherwise = m
+          where gid = glyphId cmapTable code
+        addCode code Nothing = Just [code]
+        addCode code (Just codes) = Just (code : codes)
+
+svgKerns :: TTF -> CmapTable -> [Xml Elem]
+svgKerns ttf cmapTable =
+  map (svgKern $ glyphIdToCode cmapTable) allKernPairs
+  where
+    allKernPairs = filter validKernPair $ concatMap kernPairs $ kernTables $ kern ttf
+    validKernPair KernPair{kpLeft = left, kpRight = right} =
+      glyphId cmapTable (fromIntegral left) > 0 && glyphId cmapTable (fromIntegral right) > 0
+
 testText :: TTF -> Xml Elem
 testText ttf =
   xelem "g" (xattr "style" ("font-family: " ++ show (fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
@@ -193,8 +221,8 @@ svgbody ttf cmapTable =
   xelems [xelemEmpty "metadata",
           xelem "defs" $
           xelem "font" (xattrs [xattr "horiz-adv-x" $ show avgAdvanceX] <#>
-                        xelems [fontFace ttf,
-                                glyps]),
+                        xelems ([fontFace ttf,
+                                glyps] ++ svgKerns ttf cmapTable)),
           testText ttf]
   where (glyps, avgAdvanceX) = svgGlyphs ttf cmapTable
 

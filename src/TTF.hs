@@ -15,6 +15,8 @@ module TTF(
   , Glyf(..)
   , CompositeGlyfElement(..)
   , CmapTable(..)
+  , KernPair(..)
+  , Kern(..)
   , UFWord
   , UShort
   , ULong
@@ -24,6 +26,7 @@ module TTF(
   , cmapStart
   , cmapEnd
   , cmapTableFind
+  , kernPairs
 ) where
 
 import Control.Monad
@@ -289,6 +292,23 @@ data Glyf = EmptyGlyf |
                           , cInstructions :: [Byte]
                           } deriving (Show)
 
+data KernPair = KernPair { kpLeft :: UShort
+                           , kpRight :: UShort
+                           , kpValue :: Short
+                           , kTCoverage :: UShort } deriving (Show)
+
+data KernTable = KernSubTable0 { kNPairs :: UShort
+                               , kSearchRange :: UShort
+                               , kEntrySelector :: UShort
+                               , kRangeShift :: UShort
+                               , kKernPairs :: [KernPair] }
+               | KernUnknown deriving (Show)
+
+data Kern =  Kern { kernVersion :: UShort
+                  , kernNumberOfSubtables :: UShort
+                  , kernTables :: [KernTable]
+                  } deriving (Show)
+
 data TTF = TTF { version :: Fixed
                , numTables :: UShort
                , searchRange :: UShort
@@ -304,6 +324,7 @@ data TTF = TTF { version :: Fixed
                , loca :: Loca
                , hmtx :: Hmtx
                , glyfs :: V.Vector Glyf
+               , kern :: Kern
                } deriving (Show)
 
 
@@ -363,6 +384,9 @@ glyphId CmapFormat12{c12Groups = groups} n' | start <= n && (start /= -1) = glyp
     start = fromMaybe (-1) (liftM f12StartCharCode mg)
     glyphId' = fromIntegral $ f12StartGlyphId g + (n - f12StartCharCode g)
 
+kernPairs :: KernTable -> [KernPair]
+kernPairs KernSubTable0{kKernPairs = pairs} = pairs
+kernPairs KernUnknown = []
 
 parseTableDirectory :: B.ByteString -> Get TableDirectory
 parseTableDirectory font = do
@@ -500,6 +524,37 @@ parseMaxp = parseTable "maxp" (do
   maxComponentElements <- getUShort
   maxComponentDepth <- getUShort
   return Maxp{..})
+
+parseKern :: Map String TableDirectory -> B.ByteString -> Kern
+parseKern = parseTable "kern" (do
+  kernVersion <- getUShort
+  kernNumberOfSubtables <- getUShort
+  kernTables <- replicateM (fromIntegral kernNumberOfSubtables) parseKernTable
+  return Kern{..})
+
+parseKernSubTable :: UShort -> Int -> Int -> Get KernTable
+parseKernSubTable kTCoverage _ 0 = do
+  kNPairs <- getUShort
+  kSearchRange <- getUShort
+  kEntrySelector <- getUShort
+  kRangeShift <- getUShort
+  kKernPairs <- replicateM (fromIntegral kNPairs) parseKernPair
+  return KernSubTable0{..}
+  where parseKernPair = do
+          kpLeft <- getUShort
+          kpRight <- getUShort
+          kpValue <- getShort
+          return KernPair{..}
+
+parseKernSubTable _ length' _version = do
+  skip (length' - 6)
+  return KernUnknown
+
+parseKernTable :: Get KernTable
+parseKernTable = do
+  kTLength <- getULong
+  kTCoverage <- getUShort
+  parseKernSubTable kTCoverage (fromIntegral kTLength) $ shiftR (fromIntegral kTCoverage) 8
 
 parseHMetric :: Get HMetric
 parseHMetric = do
@@ -742,6 +797,7 @@ parse font = do
       name = parseName tableDirectories font
       cmap = parseCmap tableDirectories font
       maxp = parseMaxp tableDirectories font
+      kern = parseKern tableDirectories font
       glyphCount = (fromIntegral $ numGlyphs maxp)
       loca = parseLoca (fromIntegral $ indexToLocFormat head) glyphCount tableDirectories font
       hmtx = parseHmtx (fromIntegral $ numberOfHMetrics hhea) glyphCount tableDirectories font
