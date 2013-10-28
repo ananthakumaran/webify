@@ -9,7 +9,6 @@ import Utils
 import WOFF
 import Options.Applicative
 import Data.Monoid
-import Data.Maybe
 
 platformAppleUnicode = 0
 platformMacintosh = 1
@@ -22,6 +21,7 @@ encodingUGL = 1
 data Opts = Opts { noEot :: Bool
                  , noWoff :: Bool
                  , noSvg :: Bool
+                 , enableSvgKern :: Bool
                  , svgPlatformId :: UShort
                  , svgEncodingId :: UShort
                  , inputs :: [String]}
@@ -30,6 +30,7 @@ optsDef :: Parser Opts
 optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
           <*> switch (long "no-woff" <> help "Disable woff")
           <*> switch (long "no-svg" <> help "Disable eot")
+          <*> switch (long "svg-enable-kerning" <> help "Enable svg kerning")
           <*> option (long "svg-cmap-platform-id" <> value platformMicrosoft <> help "Svg cmap platform id")
           <*> option (long "svg-cmap-encoding-id" <> value encodingUGL  <> help "Svg cmap encoding id")
           <*> arguments1 str (metavar "FONTS")
@@ -81,12 +82,12 @@ woffgen ttf input filename = do
   where target = changeExtension "woff" filename
 
 svggen :: TTF -> B.ByteString -> FilePath -> Opts -> IO ()
-svggen ttf input filename Opts{svgPlatformId = platform, svgEncodingId = encoding} = do
+svggen ttf input filename Opts{svgPlatformId = platform, svgEncodingId = encoding, enableSvgKern = enableSvgKern} = do
   putStrLn $ "Generating " ++ target
   putStrLn "Available cmaps"
   putStr $ showCmap $ cmap ttf
   putStrLn $ "Selecting platformId " ++ show platform ++ " encodingId " ++ show encoding ++ " -- " ++ cmapDescription platform encoding
-  B.writeFile target $ SVG.generate ttf input cmapTable
+  B.writeFile target $ SVG.generate ttf input cmapTable enableSvgKern
   where target = changeExtension "svg" filename
         cmapTable = cmapTableFind ttf platform encoding
 

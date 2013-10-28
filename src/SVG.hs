@@ -197,8 +197,9 @@ glyphIdToCode cmapTable =
         addCode code Nothing = Just [code]
         addCode code (Just codes) = Just (code : codes)
 
-svgKerns :: TTF -> CmapTable -> [Xml Elem]
-svgKerns ttf cmapTable =
+svgKerns :: TTF -> CmapTable -> Bool -> [Xml Elem]
+svgKerns _ _ False = []
+svgKerns ttf cmapTable _ =
   map (svgKern $ glyphIdToCode cmapTable) allKernPairs
   where
     allKernPairs = filter validKernPair $ concatMap kernPairs $ kernTables $ kern ttf
@@ -216,19 +217,19 @@ testText ttf =
     text t i = xelem "text" (xattrs [xattr "x" "20",
                                      xattr "y" $ show (i * 50)] <#> xtext t)
 
-svgbody :: TTF -> CmapTable -> Xml Elem
-svgbody ttf cmapTable =
+svgbody :: TTF -> CmapTable -> Bool -> Xml Elem
+svgbody ttf cmapTable enableKern =
   xelems [xelemEmpty "metadata",
           xelem "defs" $
           xelem "font" (xattrs [xattr "horiz-adv-x" $ show avgAdvanceX] <#>
                         xelems ([fontFace ttf,
-                                glyps] ++ svgKerns ttf cmapTable)),
+                                glyps] ++ svgKerns ttf cmapTable enableKern)),
           testText ttf]
   where (glyps, avgAdvanceX) = svgGlyphs ttf cmapTable
 
-generate :: TTF -> B.ByteString -> CmapTable -> B.ByteString
-generate ttf _font cmapTable =
+generate :: TTF -> B.ByteString -> CmapTable -> Bool -> B.ByteString
+generate ttf _font cmapTable enableKern =
   xrender svg
   where
     svg = doc svgDocInfo $
-          xelem "svg" (xattr "xmlns" "http://www.w3.org/2000/svg" <#> svgbody ttf cmapTable)
+          xelem "svg" (xattr "xmlns" "http://www.w3.org/2000/svg" <#> svgbody ttf cmapTable enableKern)
