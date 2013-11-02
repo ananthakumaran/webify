@@ -18,3 +18,7 @@ SVG
 ===
 * font - http://www.w3.org/TR/SVG/fonts.html
 * path - http://www.w3.org/TR/SVG/paths.html
+
+OTF
+===
+* https://www.microsoft.com/typography/otspec/
