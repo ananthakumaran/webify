@@ -94,7 +94,7 @@ svggen ttf input filename Opts{svgPlatformId = platform, svgEncodingId = encodin
 convert :: Opts -> FilePath -> IO ()
 convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
   input <- B.readFile filename
-  let ttf = getResult $ runGet (parse input) input
+  let ttf = fromRight $ runGet (parse input) input
   unless noEot (eotgen ttf input filename)
   unless noWoff (woffgen ttf input filename)
   unless noSvg (svggen ttf input filename opts)

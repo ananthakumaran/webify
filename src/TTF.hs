@@ -421,7 +421,7 @@ parseNameRecord font storageOffset = do
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
-  getResult $ runGet (do
+  fromRight $ runGet (do
     let tableStart = fromIntegral $ offset $ tableDirectories ! "name"
     skip tableStart
     formatSelector <- getUShort
@@ -690,7 +690,7 @@ parseGlyfs glyphCount offsets tableDirectories font =
   where tableStart = fromIntegral . offset $ tableDirectories ! "glyf"
         getGlyph _ 0 = EmptyGlyf
         getGlyph offset _len =
-          getResult $ runGet (do
+          fromRight $ runGet (do
             skip $ tableStart + offset
             numberOfContours <- getShort
             parseGlyf numberOfContours
@@ -761,14 +761,14 @@ parseCmapSubTable n = error $ "subtable format not implemented " ++ show n
 
 parseCmapEncoding :: B.ByteString -> Int -> CmapTable
 parseCmapEncoding font offset =
-  getResult $ runGet (do
+  fromRight $ runGet (do
    skip offset
    format <- getUShort
    parseCmapSubTable $ fromIntegral format) font
 
 parseCmap :: Map String TableDirectory -> B.ByteString -> Cmap
 parseCmap tableDirectories font =
-  getResult $ runGet (do
+  fromRight $ runGet (do
     let tableStart = fromIntegral $ offset $ tableDirectories ! "cmap"
     skip tableStart
     cmapVersion <- getUShort
@@ -779,7 +779,7 @@ parseCmap tableDirectories font =
 
 parseTable :: String -> Get a -> Map String TableDirectory -> B.ByteString -> a
 parseTable name m tableDirectories font =
-  getResult $ runGet (do
+  fromRight $ runGet (do
     skip $ fromIntegral . offset $ tableDirectories ! name
     m) font
 

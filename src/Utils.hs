@@ -1,5 +1,5 @@
 module Utils(
-  getResult
+  fromRight
   , substr
   , toStrict
   , toLazy
@@ -17,9 +17,9 @@ import Data.List
 import Text.Printf
 import Data.Function
 
-getResult :: (Either String t2, t) -> t2
-getResult (Right x, _) = x
-getResult (Left y, _) = error y
+fromRight :: (Either String t2, t) -> t2
+fromRight (Right x, _) = x
+fromRight (Left y, _) = error y
 
 substr :: Int -> Int -> B.ByteString -> B.ByteString
 substr s l = B.take l . B.drop s
