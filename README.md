@@ -8,11 +8,13 @@ A command line tool to convert ttf file to woff, eot & svg files
 
 ## Binaries
 
-[mac](https://sourceforge.net/projects/webify/files/mac/webify/download)
+[mac 64 bit](https://sourceforge.net/projects/webify/files/mac/webify/download)
 
-[linux](https://sourceforge.net/projects/webify/files/linux/webify/download)
+[linux 64 bit](https://sourceforge.net/projects/webify/files/linux/webify/download)
 
-[windows](https://sourceforge.net/projects/webify/files/windows/webify.exe/download)
+[linux 32 bit](https://sourceforge.net/projects/webify/files/linux32/webify/download)
+
+[windows 32 bit](https://sourceforge.net/projects/webify/files/windows/webify.exe/download)
 
 [old versions](https://sourceforge.net/projects/webify/files/)
 
