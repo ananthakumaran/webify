@@ -7,7 +7,6 @@ module TTF(
   , Hhea(..)
   , Name(..)
   , NameRecord(..)
-  , TableDirectory(..)
   , Cmap(..)
   , CmapEncodingDirectory(..)
   , HMetric(..)
@@ -33,8 +32,6 @@ import Control.Monad
 import Data.Binary.Strict.Get
 import Data.Bits
 import qualified Data.ByteString as B
-import Data.ByteString.Char8 (unpack)
-import Data.Int
 import Data.List
 import Data.Map hiding(map, findIndex)
 import Data.Maybe
@@ -42,47 +39,8 @@ import qualified Data.Text as T
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
 import qualified Data.Vector as V
-import Data.Word
 import Utils
 
-type Byte = Word8
-type Char = Int8
-type UShort = Word16
-type Short = Int16
-type FWord = Int16
-type UFWord = Word16
-type ULong = Word32
--- type Long = Int32
-type Fixed = Word32
-
-
-getFixed :: Get Fixed
-getFixed = liftM fromIntegral getWord32be
-
-getULong :: Get ULong
-getULong = getWord32be
-
-getUShort :: Get UShort
-getUShort = getWord16be
-
-getShort :: Get Short
-getShort = liftM fromIntegral getWord16be
-
-getByte :: Get Byte
-getByte = getWord8
-
-getChar :: Get TTF.Char
-getChar = liftM fromIntegral getWord8
-
-getFWord :: Get FWord
-getFWord = getShort
-
-getUFWord :: Get UFWord
-getUFWord = getUShort
-
--- format 2.14
-getUFixed :: Get Double
-getUFixed = liftM ((/ 0x4000) . fromIntegral) getShort
 
 data F12Group = F12Group { f12StartCharCode :: ULong
                          , f12EndCharCode :: ULong
@@ -134,13 +92,6 @@ data Cmap = Cmap { cmapVersion :: UShort
                  , encodingDirectories :: [CmapEncodingDirectory]
                  , subTables :: [CmapTable]
                  } deriving (Show)
-
-data TableDirectory = TableDirectory { tag :: String
-                                     , checkSum :: ULong
-                                     , offset :: ULong
-                                     , length :: ULong
-                                     , rawData :: B.ByteString
-                                     } deriving (Show)
 
 
 data NameRecord = NameRecord { platformId :: UShort
@@ -388,20 +339,6 @@ kernPairs :: KernTable -> [KernPair]
 kernPairs KernSubTable0{kKernPairs = pairs} = pairs
 kernPairs KernUnknown = []
 
-parseTableDirectory :: B.ByteString -> Get TableDirectory
-parseTableDirectory font = do
-  tag <- liftM unpack $ getByteString 4
-  checkSum <- getULong
-  offset <- getULong
-  length <- getULong
-  let rawData = substr (fromIntegral offset) (fromIntegral length) font
-  return TableDirectory{..}
-
-parseTableDirectories :: B.ByteString -> Int -> Get (Map String TableDirectory)
-parseTableDirectories font n = do
-  list <- replicateM n $ parseTableDirectory font
-  return $ fromList $ map (\x -> (tag x, x)) list
-
 parseNameRecord :: B.ByteString -> Int -> Get NameRecord
 parseNameRecord font storageOffset = do
   platformId <- getUShort
@@ -422,7 +359,7 @@ parseNameRecord font storageOffset = do
 parseName ::Map String TableDirectory -> B.ByteString -> Name
 parseName tableDirectories font =
   fromRight $ runGet (do
-    let tableStart = fromIntegral $ offset $ tableDirectories ! "name"
+    let tableStart = fromIntegral $ tDOffset $ tableDirectories ! "name"
     skip tableStart
     formatSelector <- getUShort
     numberOfNameRecords <- getUShort
@@ -634,7 +571,7 @@ parseCompositeGlyfElement = do
                   return CompositeGlyfElement{..}
               else return CompositeGlyfElement{..}
   where getArg f | testBit f arg_1_and_2_are_words = liftM fromIntegral getUShort
-                 | otherwise = liftM fromIntegral TTF.getChar
+                 | otherwise = liftM fromIntegral Utils.getChar
         arg_1_and_2_are_words = 0
         args_are_xy_values = 1
         we_have_a_scale = 3
@@ -687,7 +624,7 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
 parseGlyfs glyphCount offsets tableDirectories font =
   zipWith getGlyph (take glyphCount offsets) $ diff offsets
-  where tableStart = fromIntegral . offset $ tableDirectories ! "glyf"
+  where tableStart = fromIntegral . tDOffset $ tableDirectories ! "glyf"
         getGlyph _ 0 = EmptyGlyf
         getGlyph offset _len =
           fromRight $ runGet (do
@@ -769,7 +706,7 @@ parseCmapEncoding font offset =
 parseCmap :: Map String TableDirectory -> B.ByteString -> Cmap
 parseCmap tableDirectories font =
   fromRight $ runGet (do
-    let tableStart = fromIntegral $ offset $ tableDirectories ! "cmap"
+    let tableStart = fromIntegral $ tDOffset $ tableDirectories ! "cmap"
     skip tableStart
     cmapVersion <- getUShort
     numberOfSubtables <- getUShort
@@ -780,7 +717,7 @@ parseCmap tableDirectories font =
 parseTable :: String -> Get a -> Map String TableDirectory -> B.ByteString -> a
 parseTable name m tableDirectories font =
   fromRight $ runGet (do
-    skip $ fromIntegral . offset $ tableDirectories ! name
+    skip $ fromIntegral . tDOffset $ tableDirectories ! name
     m) font
 
 parse :: B.ByteString -> Get TTF

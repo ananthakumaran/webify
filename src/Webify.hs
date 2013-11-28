@@ -5,6 +5,7 @@ import EOT
 import SVG
 import System.FilePath
 import TTF hiding(str)
+import OTF
 import Utils
 import WOFF
 import Options.Applicative
@@ -94,10 +95,13 @@ svggen ttf input filename Opts{svgPlatformId = platform, svgEncodingId = encodin
 convert :: Opts -> FilePath -> IO ()
 convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
   input <- B.readFile filename
-  let ttf = fromRight $ runGet (parse input) input
-  unless noEot (eotgen ttf input filename)
-  unless noWoff (woffgen ttf input filename)
-  unless noSvg (svggen ttf input filename opts)
+  if takeExtension filename == ".otf"
+    then putStrLn $ show $ fromRight $ runGet (OTF.parse input) input
+    else let ttf = fromRight $ runGet (TTF.parse input) input in
+    do
+      unless noEot (eotgen ttf input filename)
+      unless noWoff (woffgen ttf input filename)
+      unless noSvg (svggen ttf input filename opts)
 
 convertFiles :: Opts -> IO ()
 convertFiles opts@Opts{inputs = fonts} =

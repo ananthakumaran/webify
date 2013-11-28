@@ -12,7 +12,7 @@ import qualified Data.Map as M
 import TTF
 import Text.XML.Generator
 import Numeric
-import Utils
+import Utils hiding (Char)
 import Data.Vector as V ((!), length, last)
 
 byNameId :: UShort -> TTF -> T.Text

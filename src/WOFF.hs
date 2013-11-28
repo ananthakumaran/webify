@@ -27,11 +27,11 @@ putUInt16 = putWord16be
 putTableDirectory ::
   ((Int, Int, Int, B.ByteString), TableDirectory) -> PutM ()
 putTableDirectory ((startOffset, size, _padding, _compressedData), directory) = do
-  putByteString $ pack $ tag directory
+  putByteString $ pack $ tDTag directory
   putUInt32 $ fromIntegral startOffset
   putUInt32 $ fromIntegral size
-  putUInt32 $ fromIntegral $ TTF.length directory
-  putUInt32 $ checkSum directory
+  putUInt32 $ fromIntegral $ tDLength directory
+  putUInt32 $ tDCheckSum directory
 
 
 calculateOffset ::
@@ -68,11 +68,11 @@ payload ttf font = do
   putUInt32 0 -- private block offset
   putUInt32 0 -- private block length
   let tds = Map.elems $ tableDirectories ttf
-      sortByOffset = sortBy (compare `on` offset)
-      sortedByTag = sortBy (compare `on` tag . snd)
+      sortByOffset = sortBy (compare `on` tDOffset)
+      sortedByTag = sortBy (compare `on` tDTag . snd)
       initialOffset = [(fromIntegral (44 + (20 * numTables ttf)), 0, 0, pack "")]
       offsets = drop 1 $ reverse $
-                foldl calculateOffset initialOffset (map rawData $ sortByOffset tds)
+                foldl calculateOffset initialOffset (map tDRawData $ sortByOffset tds)
   mapM_ putTableDirectory $ sortedByTag $ zip offsets (sortByOffset tds)
   mapM_ putFontData offsets
 
