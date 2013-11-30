@@ -28,23 +28,30 @@ module Font(
   , NameRecord(..)
   , HMetric(..)
   , Hmtx(..)
+  , OS2(..)
+  , Head(..)
 
 
   , parseTableDirectory
   , parseTableDirectories
   , parseTable
+  , parseOS2
+  , parseHead
+  , parseName
 ) where
 
-import Utils
-import Data.Map hiding(map)
+import Control.Monad
+import Data.Binary.Strict.Get
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (unpack)
-import Control.Monad
-import Data.Word
 import Data.Int
-import Data.Binary.Strict.Get
+import Data.Map hiding(map)
 import qualified Data.Text as T
+import Data.Text.Encoding.Error
 import qualified Data.Vector as V
+import Data.Word
+import Utils
+import Data.Text.Encoding
 
 -- font data types
 
@@ -119,6 +126,40 @@ data Hmtx = Hmtx { hMetrics :: V.Vector HMetric
                  , leftSideBearings :: [FWord]
                  } deriving (Show)
 
+data OS2 = OS2 { os2Version :: UShort
+               , xAvgCharWidth :: Short
+               , usWeightClass :: UShort
+               , usWidthClass :: UShort
+               , fsType :: UShort
+               , ySubscriptXSize :: Short
+               , ySubscriptYSize :: Short
+               , ySubscriptXOffset :: Short
+               , ySubscriptYOffset :: Short
+               , ySuperscriptXSize :: Short
+               , ySuperscriptYSize :: Short
+               , ySuperscriptXOffset :: Short
+               , ySuperscriptYOffset :: Short
+               , yStrikeoutSize :: Short
+               , yStrikeoutPosition :: Short
+               , sFamilyClass :: Short
+               , panose :: [Byte]
+               , ulUnicodeRange1 :: ULong
+               , ulUnicodeRange2 :: ULong
+               , ulUnicodeRange3 :: ULong
+               , ulUnicodeRange4 :: ULong
+               , aschVendID :: [Byte]
+               , fsSelection :: UShort
+               , usFirstCharIndex :: UShort
+               , usLastCharIndex :: UShort
+               , sTypoAscender :: UShort
+               , sTypoDescender :: UShort
+               , sTypoLineGap :: UShort
+               , usWinAscent :: UShort
+               , usWinDescent :: UShort
+               , ulCodePageRange1 :: ULong
+               , ulCodePageRange2 :: ULong
+               } deriving (Show)
+
 parseTableDirectory :: B.ByteString -> Get TableDirectory
 parseTableDirectory font = do
   tDTag <- liftM unpack $ getByteString 4
@@ -139,6 +180,111 @@ parseTable name' m tds font =
     skip $ fromIntegral . tDOffset $ tds ! name'
     m) font
 
+parseOS2 :: Map String TableDirectory -> B.ByteString -> OS2
+parseOS2 = parseTable "OS/2" (do
+  os2Version <- getUShort
+  unless (os2Version `elem` [1..4]) (error $ "unhandled  os2 version " ++ show os2Version)
+  xAvgCharWidth <- getShort
+  usWeightClass <- getUShort
+  usWidthClass <- getUShort
+  fsType <- getUShort
+  ySubscriptXSize <- getShort
+  ySubscriptYSize <- getShort
+  ySubscriptXOffset <- getShort
+  ySubscriptYOffset <- getShort
+  ySuperscriptXSize <- getShort
+  ySuperscriptYSize <- getShort
+  ySuperscriptXOffset <- getShort
+  ySuperscriptYOffset <- getShort
+  yStrikeoutSize <- getShort
+  yStrikeoutPosition <- getShort
+  sFamilyClass <- getShort
+  panose <- replicateM 10 getByte
+  ulUnicodeRange1 <- getULong
+  ulUnicodeRange2 <- getULong
+  ulUnicodeRange3 <- getULong
+  ulUnicodeRange4 <- getULong
+  aschVendID <- replicateM 4 getByte
+  fsSelection <- getUShort
+  usFirstCharIndex <- getUShort
+  usLastCharIndex <- getUShort
+  sTypoAscender <- getUShort
+  sTypoDescender <- getUShort
+  sTypoLineGap <- getUShort
+  usWinAscent <- getUShort
+  usWinDescent <- getUShort
+  ulCodePageRange1 <- getULong
+  ulCodePageRange2 <- getULong
+  return OS2 {..})
+
+data Head = Head { headVersion :: Fixed
+                 , fontRevision :: Fixed
+                 , checkSumAdjusment :: ULong
+                 , magicNumber :: ULong
+                 , headFlags :: UShort
+                 , unitsPerEm :: UShort
+                 , created :: B.ByteString
+                 , modified :: B.ByteString
+                 , xMin :: FWord
+                 , yMin :: FWord
+                 , xMax :: FWord
+                 , yMax :: FWord
+                 , macStyle :: UShort
+                 , lowestRecPPEM :: UShort
+                 , fontDirectionHint :: Short
+                 , indexToLocFormat :: Short
+                 , glyphDataFormat :: Short
+                 } deriving (Show)
+
+parseHead :: Map String TableDirectory -> B.ByteString -> Head
+parseHead = parseTable "head" (do
+  headVersion <- getFixed
+  fontRevision <- getFixed
+  checkSumAdjusment <- getULong
+  magicNumber <- getULong
+  headFlags <- getUShort
+  unitsPerEm <- getUShort
+  created <- getByteString 8
+  modified <- getByteString 8
+  xMin <- getFWord
+  yMin <- getFWord
+  xMax <- getFWord
+  yMax <- getFWord
+  macStyle <- getUShort
+  lowestRecPPEM <- getUShort
+  fontDirectionHint <- getShort
+  indexToLocFormat <- getShort
+  glyphDataFormat <- getShort
+  return Head{..})
+
+parseNameRecord :: B.ByteString -> Int -> Get NameRecord
+parseNameRecord font storageOffset = do
+  platformId <- getUShort
+  encodingId <- getUShort
+  languageId <- getUShort
+  nameId <- getUShort
+  strLength <- getUShort
+  strOffset <- getUShort
+  let str = decoder platformId encodingId $ substr
+            (fromIntegral ((fromIntegral storageOffset :: Int) + fromIntegral strOffset)) (fromIntegral strLength) font
+  return NameRecord{..}
+  where
+    decoder 3 _ = decodeUtf16BE
+    decoder 2 _ = decodeUtf16BE
+    decoder 1 _ = decodeUtf8With ignore
+    decoder 0 _ = decodeUtf16BE
+    decoder _ _ = decodeUtf16BE
+
+parseName ::Map String TableDirectory -> B.ByteString -> Name
+parseName tds font =
+  fromRight $ runGet (do
+    let tableStart = fromIntegral $ tDOffset $ tds ! "name"
+    skip tableStart
+    formatSelector <- getUShort
+    numberOfNameRecords <- getUShort
+    storageOffset <- getUShort
+    nameRecords <- replicateM (fromIntegral numberOfNameRecords) $ parseNameRecord font (tableStart + fromIntegral storageOffset)
+    return Name{..}) font
 
 class Font a where
   version :: a -> Fixed

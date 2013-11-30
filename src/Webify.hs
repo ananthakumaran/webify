@@ -3,15 +3,17 @@
 import Control.Monad
 import Data.Binary.Strict.Get
 import qualified Data.ByteString as B
+import Data.Monoid
 import EOT
+import Font hiding(str)
+import OTF
+import Options.Applicative
 import SVG
 import System.FilePath
 import TTF
-import OTF
 import Utils
 import WOFF
-import Options.Applicative
-import Data.Monoid
+
 
 -- platformAppleUnicode = 0
 -- platformMacintosh = 1
@@ -72,16 +74,16 @@ showCmap cmap' =
   where header = ["PlatformId", "EncodingId", "Description"]
         pluck dir = [show $ cmapPlatformId dir, show $ cmapEncodingId dir, cmapDescription (cmapPlatformId dir) (cmapEncodingId dir)]
 
-eotgen :: TTF -> B.ByteString -> FilePath -> IO ()
-eotgen ttf input filename = do
+eotgen :: Font f => f -> B.ByteString -> FilePath -> IO ()
+eotgen font input filename = do
   putStrLn $ "Generating " ++ target
-  B.writeFile target $ EOT.generate ttf input
+  B.writeFile target $ EOT.generate font input
   where target = changeExtension "eot" filename
 
-woffgen :: TTF -> B.ByteString -> FilePath -> IO ()
-woffgen ttf input filename = do
+woffgen :: Font f => f -> B.ByteString -> FilePath -> IO ()
+woffgen font input filename = do
   putStrLn $ "Generating " ++ target
-  B.writeFile target $ WOFF.generate ttf input
+  B.writeFile target $ WOFF.generate font input
   where target = changeExtension "woff" filename
 
 svggen :: TTF -> B.ByteString -> FilePath -> Opts -> IO ()
@@ -98,7 +100,10 @@ convert :: Opts -> FilePath -> IO ()
 convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
   input <- B.readFile filename
   if takeExtension filename == ".otf"
-    then putStrLn $ show $ fromRight $ runGet (OTF.parse input) input
+    then let otf = fromRight $ runGet (OTF.parse input) input in
+    do
+      unless noEot (eotgen otf input filename)
+      unless noWoff (woffgen otf input filename)
     else let ttf = fromRight $ runGet (TTF.parse input) input in
     do
       unless noEot (eotgen ttf input filename)
