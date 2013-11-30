@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module TTF(
@@ -5,12 +6,8 @@ module TTF(
   , OS2(..)
   , Head(..)
   , Hhea(..)
-  , Name(..)
-  , NameRecord(..)
   , Cmap(..)
   , CmapEncodingDirectory(..)
-  , HMetric(..)
-  , Hmtx(..)
   , Glyf(..)
   , CompositeGlyfElement(..)
   , CmapTable(..)
@@ -35,11 +32,28 @@ import qualified Data.ByteString as B
 import Data.List
 import Data.Map hiding(map, findIndex)
 import Data.Maybe
-import qualified Data.Text as T
 import Data.Text.Encoding
 import Data.Text.Encoding.Error
 import qualified Data.Vector as V
 import Utils
+import Font
+
+
+instance Font TTF where
+  version = TTF.version
+  numTables = TTF.numTables
+  tableDirectories = TTF.tableDirectories
+  os2panose = panose . os2
+  os2fsSelection = fsSelection . os2
+  os2usWeightClass = usWeightClass . os2
+  os2ulUnicodeRange1 = ulUnicodeRange1 . os2
+  os2ulUnicodeRange2 = ulUnicodeRange2 . os2
+  os2ulUnicodeRange3 = ulUnicodeRange3 . os2
+  os2ulUnicodeRange4 = ulUnicodeRange4 . os2
+  os2ulCodePageRange1 = ulCodePageRange1 . os2
+  os2ulCodePageRange2 = ulCodePageRange2 . os2
+  headCheckSumAdjusment = checkSumAdjusment . TTF.head
+  name = TTF.name
 
 
 data F12Group = F12Group { f12StartCharCode :: ULong
@@ -93,21 +107,6 @@ data Cmap = Cmap { cmapVersion :: UShort
                  , subTables :: [CmapTable]
                  } deriving (Show)
 
-
-data NameRecord = NameRecord { platformId :: UShort
-                               , encodingId :: UShort
-                               , languageId :: UShort
-                               , nameId :: UShort
-                               , strLength :: UShort
-                               , strOffset :: UShort
-                               , str :: T.Text
-                             } deriving (Show)
-
-data Name = Name { formatSelector :: UShort
-                   , numberOfNameRecords :: UShort
-                   , storageOffset :: UShort
-                   , nameRecords :: [NameRecord]
-                 } deriving (Show)
 
 data OS2 = OS2 { os2Version :: UShort
                , xAvgCharWidth :: Short
@@ -195,15 +194,6 @@ data Maxp = Maxp { maxVersion :: Fixed
                  , maxComponentDepth :: UShort
                  } deriving (Show)
 
-
-
-data HMetric = HMetric { advanceWidth :: UFWord
-                         , lsb :: FWord
-                         } deriving (Show)
-
-data Hmtx = Hmtx { hMetrics :: V.Vector HMetric
-                 , leftSideBearings :: [FWord]
-                 } deriving (Show)
 
 
 data Loca = Loca { locaOffsets :: [ULong] } deriving (Show)
@@ -355,11 +345,12 @@ parseNameRecord font storageOffset = do
     decoder 2 _ = decodeUtf16BE
     decoder 1 _ = decodeUtf8With ignore
     decoder 0 _ = decodeUtf16BE
+    decoder _ _ = decodeUtf16BE
 
 parseName ::Map String TableDirectory -> B.ByteString -> Name
-parseName tableDirectories font =
+parseName tds font =
   fromRight $ runGet (do
-    let tableStart = fromIntegral $ tDOffset $ tableDirectories ! "name"
+    let tableStart = fromIntegral $ tDOffset $ tds ! "name"
     skip tableStart
     formatSelector <- getUShort
     numberOfNameRecords <- getUShort
@@ -571,7 +562,7 @@ parseCompositeGlyfElement = do
                   return CompositeGlyfElement{..}
               else return CompositeGlyfElement{..}
   where getArg f | testBit f arg_1_and_2_are_words = liftM fromIntegral getUShort
-                 | otherwise = liftM fromIntegral Utils.getChar
+                 | otherwise = liftM fromIntegral Font.getChar
         arg_1_and_2_are_words = 0
         args_are_xy_values = 1
         we_have_a_scale = 3
@@ -622,9 +613,9 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
 
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
-parseGlyfs glyphCount offsets tableDirectories font =
+parseGlyfs glyphCount offsets tds font =
   zipWith getGlyph (take glyphCount offsets) $ diff offsets
-  where tableStart = fromIntegral . tDOffset $ tableDirectories ! "glyf"
+  where tableStart = fromIntegral . tDOffset $ tds ! "glyf"
         getGlyph _ 0 = EmptyGlyf
         getGlyph offset _len =
           fromRight $ runGet (do
@@ -640,6 +631,7 @@ parseLoca 0 count = parseTable "loca" (do
 parseLoca 1 count = parseTable "loca" (do
   locaOffsets <- replicateM (count + 1) getULong
   return Loca{..})
+parseLoca _ _ = error "error while parsing loca table"
 
 parseCmapEncodingDirectory :: Get CmapEncodingDirectory
 parseCmapEncodingDirectory = do
@@ -704,21 +696,15 @@ parseCmapEncoding font offset =
    parseCmapSubTable $ fromIntegral format) font
 
 parseCmap :: Map String TableDirectory -> B.ByteString -> Cmap
-parseCmap tableDirectories font =
+parseCmap tds font =
   fromRight $ runGet (do
-    let tableStart = fromIntegral $ tDOffset $ tableDirectories ! "cmap"
+    let tableStart = fromIntegral $ tDOffset $ tds ! "cmap"
     skip tableStart
     cmapVersion <- getUShort
     numberOfSubtables <- getUShort
     encodingDirectories <- replicateM (fromIntegral numberOfSubtables) parseCmapEncodingDirectory
     let subTables = map (parseCmapEncoding font . (+ tableStart) . fromIntegral . cmapOffset) encodingDirectories
     return Cmap{..}) font
-
-parseTable :: String -> Get a -> Map String TableDirectory -> B.ByteString -> a
-parseTable name m tableDirectories font =
-  fromRight $ runGet (do
-    skip $ fromIntegral . tDOffset $ tableDirectories ! name
-    m) font
 
 parse :: B.ByteString -> Get TTF
 parse font = do

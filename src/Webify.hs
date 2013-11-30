@@ -1,22 +1,24 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-missing-signatures #-}
+
 import Control.Monad
 import Data.Binary.Strict.Get
 import qualified Data.ByteString as B
 import EOT
 import SVG
 import System.FilePath
-import TTF hiding(str)
+import TTF
 import OTF
 import Utils
 import WOFF
 import Options.Applicative
 import Data.Monoid
 
-platformAppleUnicode = 0
-platformMacintosh = 1
-platformISO = 2
+-- platformAppleUnicode = 0
+-- platformMacintosh = 1
+-- platformISO = 2
 platformMicrosoft = 3
 
-encodingUndefined = 0
+-- encodingUndefined = 0
 encodingUGL = 1
 
 data Opts = Opts { noEot :: Bool

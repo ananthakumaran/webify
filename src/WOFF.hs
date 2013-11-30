@@ -10,7 +10,7 @@ import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import Data.Word
 import Data.List
-import TTF hiding(head)
+import Font
 import Utils
 import Data.Function
 
@@ -55,11 +55,11 @@ putFontData (_, _, padding, compressedData) = do
   putByteString compressedData
   replicateM_ padding (putWord8 0x0)
 
-payload :: TTF -> B.ByteString -> Put
-payload ttf font = do
-  putUInt16 $ numTables ttf
+payload :: Font f => f -> B.ByteString -> Put
+payload font rawFont = do
+  putUInt16 $ numTables font
   putUInt16 0 -- reserved
-  putUInt32 $ fromIntegral $ B.length font
+  putUInt32 $ fromIntegral $ B.length rawFont
   putUInt16 1 -- woff version major
   putUInt16 0 -- woff version minor
   putUInt32 0 -- meta offset
@@ -67,24 +67,24 @@ payload ttf font = do
   putUInt32 0 -- meta length uncompressed
   putUInt32 0 -- private block offset
   putUInt32 0 -- private block length
-  let tds = Map.elems $ tableDirectories ttf
+  let tds = Map.elems $ tableDirectories font
       sortByOffset = sortBy (compare `on` tDOffset)
       sortedByTag = sortBy (compare `on` tDTag . snd)
-      initialOffset = [(fromIntegral (44 + (20 * numTables ttf)), 0, 0, pack "")]
+      initialOffset = [(fromIntegral (44 + (20 * numTables font)), 0, 0, pack "")]
       offsets = drop 1 $ reverse $
                 foldl calculateOffset initialOffset (map tDRawData $ sortByOffset tds)
   mapM_ putTableDirectory $ sortedByTag $ zip offsets (sortByOffset tds)
   mapM_ putFontData offsets
 
 
-combine :: TTF -> B.ByteString -> PutM ()
-combine ttf rest = do
+combine :: Font f => f -> B.ByteString -> PutM ()
+combine font rest = do
   putUInt32 0x774F4646
-  putUInt32 $ version ttf
+  putUInt32 $ version font
   putUInt32 $ fromIntegral $ B.length rest + 12
   putByteString rest
 
-generate :: TTF -> B.ByteString -> B.ByteString
-generate ttf font =
-  let rest = toStrict $ runPut (payload ttf font)
-  in toStrict $ runPut $ combine ttf rest
+generate :: Font f => f -> B.ByteString -> B.ByteString
+generate font rawFont =
+  let rest = toStrict $ runPut (payload font rawFont)
+  in toStrict $ runPut $ combine font rest

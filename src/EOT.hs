@@ -9,7 +9,7 @@ import qualified Data.ByteString as B
 import Data.List (find)
 import Data.Maybe (fromJust, isJust)
 import Data.Text.Encoding (encodeUtf16LE)
-import TTF
+import Font
 import Utils
 
 putULong :: ULong -> Put
@@ -48,27 +48,25 @@ putNameStr name' i | isJust mnameRecord = do
         encodedStr = encodeUtf16LE $ str nameRecord
 
 
-payload :: TTF -> B.ByteString -> Put
-payload ttf font = do
-  putULong (fromIntegral (B.length font)) -- font size
+payload :: Font f => f -> B.ByteString -> Put
+payload font rawFont = do
+  putULong (fromIntegral (B.length rawFont)) -- font size
   putULong 0x00020001
   putULong 0 -- flags
-  let os = os2 ttf
-      head' = TTF.head ttf
-      name' = TTF.name ttf
-  mapM_ putByte $ panose os
+  let name' = name font
+  mapM_ putByte $ os2panose font
   putByte 0x01
-  putByte (if testBit (fsSelection os) 0 then 0x01 else 0)
-  putULong $ fromIntegral $ usWeightClass os
+  putByte (if testBit (os2fsSelection font) 0 then 0x01 else 0)
+  putULong $ fromIntegral $ os2usWeightClass font
   putUShort 0  --  embedding permission putUShort $ fsType os
   putUShort 0x504C
-  putULong $ ulUnicodeRange1 os
-  putULong $ ulUnicodeRange2 os
-  putULong $ ulUnicodeRange3 os
-  putULong $ ulUnicodeRange4 os
-  putULong $ ulCodePageRange1 os
-  putULong $ ulCodePageRange2 os
-  putULong $ checkSumAdjusment head'
+  putULong $ os2ulUnicodeRange1 font
+  putULong $ os2ulUnicodeRange2 font
+  putULong $ os2ulUnicodeRange3 font
+  putULong $ os2ulUnicodeRange4 font
+  putULong $ os2ulCodePageRange1 font
+  putULong $ os2ulCodePageRange2 font
+  putULong $ headCheckSumAdjusment font
   replicateM_ 4 (putULong 0)
   putUShort 0
   putNameStr name' 1
@@ -76,7 +74,7 @@ payload ttf font = do
   putNameStr name' 5
   putNameStr name' 4
   putUShort 0 -- RootString
-  putByteString font
+  putByteString rawFont
 
 
 combine :: B.ByteString -> PutM ()
@@ -84,7 +82,7 @@ combine rest = do
   putULong $ fromIntegral $ B.length rest + 4
   putByteString rest
 
-generate :: TTF -> B.ByteString -> B.ByteString
-generate ttf font =
-  let rest = toStrict $ runPut (payload ttf font)
+generate :: Font f => f -> B.ByteString -> B.ByteString
+generate font rawFont =
+  let rest = toStrict $ runPut (payload font rawFont)
   in toStrict $ runPut $ combine rest

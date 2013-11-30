@@ -10,9 +10,10 @@ import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import qualified Data.Map as M
 import TTF
+import Font hiding (Char, name)
 import Text.XML.Generator
 import Numeric
-import Utils hiding (Char)
+import Utils
 import Data.Vector as V ((!), length, last)
 
 byNameId :: UShort -> TTF -> T.Text
@@ -79,9 +80,9 @@ contourPath contour =
                      let (x, y, f) = Prelude.head ccontour'
                          (x1, y1, f1) = second ccontour'
                          (x2, y2, f2) = third ccontour'
-                         showx x = (formatCoordinate (x - lastx), formatCoordinate x)
-                         showy y = (formatCoordinate (y - lasty), formatCoordinate y)
-                         showxy x y = (formatCoordinates (x - lastx) (y - lasty), formatCoordinates x y)
+                         showx x'' = (formatCoordinate (x'' - lastx), formatCoordinate x'')
+                         showy y'' = (formatCoordinate (y'' - lasty), formatCoordinate y'')
+                         showxy x'' y'' = (formatCoordinates (x'' - lastx) (y'' - lasty), formatCoordinates x'' y'')
                          sp = shortestPath
                          without i = path (n + i) (drop i ccontour')
                          next True True _ | x == x1 = sp "v" [showy y1] ++ rest
