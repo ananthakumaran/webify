@@ -10,6 +10,6 @@ todo.org
 *.hi
 *.o
 src/Webify
-*.prof
+*.prof*
 .cabal-sandbox
 cabal.sandbox.config
