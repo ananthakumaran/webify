@@ -13,6 +13,7 @@ import System.FilePath
 import TTF
 import Utils
 import WOFF
+import Control.Exception
 
 
 -- platformAppleUnicode = 0
@@ -112,7 +113,10 @@ convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
 
 convertFiles :: Opts -> IO ()
 convertFiles opts@Opts{inputs = fonts} =
-  forM_ fonts $ convert opts
+  forM_ fonts $ safeConvert opts
+  where safeConvert opts file = convert opts file `catch` displayError file
+        displayError :: FilePath -> SomeException -> IO ()
+        displayError file e = (putStrLn $ "Failed to convert " ++ file) >> (putStrLn $ show e)
 
 webifyVersion = "0.1.3.0"
 
