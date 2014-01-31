@@ -33,3 +33,17 @@ A command line tool to convert ttf file to woff, eot & svg files
         font-style: normal;
     }
 ````
+
+## Supported conversion formats
+
+|         | [WOFF 1.0][w1] | [WOFF 2.0][w2] | [SVG][svg]  | [EOT][eot]  | [MTX][mtx]   |
+|-------|----------------------|---------------------|----------------|----------------|-----------------|
+| TTF |            ✔            |                           |        ✔         |          ✔       |                     |
+| OTF |           ✔             |                           |                   |           ✔       |                    |
+
+
+[w1]: http://www.w3.org/TR/WOFF/
+[w2]: http://www.w3.org/TR/2014/WD-WOFF20ER-20140128/
+[svg]: http://www.w3.org/TR/SVG/fonts.html
+[eot]: http://www.w3.org/Submission/EOT/
+[mtx]: http://www.w3.org/Submission/MTX/
