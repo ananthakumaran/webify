@@ -35,7 +35,8 @@ executable webify
                        zlib >= 0.5.4,
                        xmlgen == 0.4.0.3,
                        optparse-applicative >= 0.5.2,
-                       vector >= 0.10.0
+                       vector >= 0.10.0,
+                       hopfli >= 0.1.0.0
 
 source-repository head
   type:     git

@@ -1,19 +1,19 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-missing-signatures #-}
 
-import Control.Monad
-import Data.Binary.Strict.Get
-import qualified Data.ByteString as B
-import Data.Monoid
-import EOT
-import Font hiding(str)
-import OTF
-import Options.Applicative
-import SVG
-import System.FilePath
-import TTF
-import Utils
-import WOFF
-import Control.Exception
+import           Control.Exception
+import           Control.Monad
+import           Data.Binary.Strict.Get
+import qualified Data.ByteString        as B
+import           Data.Monoid
+import           EOT
+import           Font                   hiding (str)
+import           Options.Applicative
+import           OTF
+import           SVG
+import           System.FilePath
+import           TTF
+import           Utils
+import           WOFF
 
 
 -- platformAppleUnicode = 0
@@ -24,19 +24,21 @@ platformMicrosoft = 3
 -- encodingUndefined = 0
 encodingUGL = 1
 
-data Opts = Opts { noEot :: Bool
-                 , noWoff :: Bool
-                 , noSvg :: Bool
+data Opts = Opts { noEot         :: Bool
+                 , noWoff        :: Bool
+                 , noSvg         :: Bool
                  , enableSvgKern :: Bool
+                 , zopfli        :: Bool
                  , svgPlatformId :: UShort
                  , svgEncodingId :: UShort
-                 , inputs :: [String]}
+                 , inputs        :: [String]}
 
 optsDef :: Parser Opts
 optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
           <*> switch (long "no-woff" <> help "Disable woff")
           <*> switch (long "no-svg" <> help "Disable eot")
           <*> switch (long "svg-enable-kerning" <> help "Enable svg kerning")
+          <*> switch (long "zopfli" <> help "Use Zopfli Compression Algorithm")
           <*> option (long "svg-cmap-platform-id" <> value platformMicrosoft <> help "Svg cmap platform id")
           <*> option (long "svg-cmap-encoding-id" <> value encodingUGL  <> help "Svg cmap encoding id")
           <*> arguments1 str (metavar "FONTS")
@@ -81,10 +83,10 @@ eotgen font input filename = do
   B.writeFile target $ EOT.generate font input
   where target = changeExtension "eot" filename
 
-woffgen :: Font f => f -> B.ByteString -> FilePath -> IO ()
-woffgen font input filename = do
+woffgen :: Font f => f -> B.ByteString -> FilePath -> Opts -> IO ()
+woffgen font input filename Opts{zopfli = zopfli}= do
   putStrLn $ "Generating " ++ target
-  B.writeFile target $ WOFF.generate font input
+  B.writeFile target $ WOFF.generate font input zopfli
   where target = changeExtension "woff" filename
 
 svggen :: TTF -> B.ByteString -> FilePath -> Opts -> IO ()
@@ -104,11 +106,11 @@ convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
     then let otf = fromRight $ runGet (OTF.parse input) input in
     do
       unless noEot (eotgen otf input filename)
-      unless noWoff (woffgen otf input filename)
+      unless noWoff (woffgen otf input filename opts)
     else let ttf = fromRight $ runGet (TTF.parse input) input in
     do
       unless noEot (eotgen ttf input filename)
-      unless noWoff (woffgen ttf input filename)
+      unless noWoff (woffgen ttf input filename opts)
       unless noSvg (svggen ttf input filename opts)
 
 convertFiles :: Opts -> IO ()
