@@ -20,11 +20,11 @@ Flag debug
 executable webify
   hs-source-dirs:   src
   main-is:             Webify.hs
+  other-modules:       EOT, Font, OTF, SVG, TTF, Utils, WOFF
 
   if flag(debug)
     ghc-prof-options: -prof, -fprof-auto
 
-  -- other-modules:
   build-depends:       base ==4.6.*,
                        containers >= 0.4.2.1,
                        bytestring >= 0.9,
