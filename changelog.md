@@ -1,3 +1,8 @@
+## 0.1.5
+
+* --zopfli flag can be used enable Zopfli Compression Algorithm
+    instead of the default Zlib Algorithm
+
 ## 0.1.4
 
 * Don't exit if one of the files in the batch failed to convert
