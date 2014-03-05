@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# LANGUAGE RecordWildCards #-}
 
 import           Control.Exception
 import           Control.Monad
@@ -7,7 +8,7 @@ import qualified Data.ByteString        as B
 import           Data.Monoid
 import           EOT
 import           Font                   hiding (str)
-import           Options.Applicative
+import           Options.Applicative    hiding (header)
 import           OTF
 import           SVG
 import           System.FilePath
@@ -84,23 +85,23 @@ eotgen font input filename = do
   where target = changeExtension "eot" filename
 
 woffgen :: Font f => f -> B.ByteString -> FilePath -> Opts -> IO ()
-woffgen font input filename Opts{zopfli = zopfli}= do
+woffgen font input filename Opts{..}= do
   putStrLn $ "Generating " ++ target
   B.writeFile target $ WOFF.generate font input zopfli
   where target = changeExtension "woff" filename
 
 svggen :: TTF -> B.ByteString -> FilePath -> Opts -> IO ()
-svggen ttf input filename Opts{svgPlatformId = platform, svgEncodingId = encoding, enableSvgKern = enableSvgKern} = do
+svggen ttf input filename Opts{..} = do
   putStrLn $ "Generating " ++ target
   putStrLn "Available cmaps"
   putStr $ showCmap $ cmap ttf
-  putStrLn $ "Selecting platformId " ++ show platform ++ " encodingId " ++ show encoding ++ " -- " ++ cmapDescription platform encoding
+  putStrLn $ "Selecting platformId " ++ show svgPlatformId ++ " encodingId " ++ show svgEncodingId ++ " -- " ++ cmapDescription svgPlatformId svgEncodingId
   B.writeFile target $ SVG.generate ttf input cmapTable enableSvgKern
   where target = changeExtension "svg" filename
-        cmapTable = cmapTableFind ttf platform encoding
+        cmapTable = cmapTableFind ttf svgPlatformId svgEncodingId
 
 convert :: Opts -> FilePath -> IO ()
-convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
+convert opts@Opts{..} filename = do
   input <- B.readFile filename
   if takeExtension filename == ".otf"
     then let otf = fromRight $ runGet (OTF.parse input) input in
@@ -116,7 +117,7 @@ convert opts@Opts{noEot = noEot, noWoff = noWoff, noSvg = noSvg} filename = do
 convertFiles :: Opts -> IO ()
 convertFiles opts@Opts{inputs = fonts} =
   forM_ fonts $ safeConvert opts
-  where safeConvert opts file = convert opts file `catch` displayError file
+  where safeConvert opts' file = convert opts' file `catch` displayError file
         displayError :: FilePath -> SomeException -> IO ()
         displayError file e = (putStrLn $ "Failed to convert " ++ file) >> (putStrLn $ show e)
 
