@@ -6,6 +6,10 @@ A command line tool to convert ttf file to woff, eot & svg files
 
     $> webify fontname.ttf
 
+For the list of available options
+
+    $> webify --help
+
 ## Binaries
 
 [mac 64 bit](https://sourceforge.net/projects/webify/files/mac/webify/download)
