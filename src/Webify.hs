@@ -121,7 +121,7 @@ convertFiles opts@Opts{inputs = fonts} =
         displayError :: FilePath -> SomeException -> IO ()
         displayError file e = (putStrLn $ "Failed to convert " ++ file) >> (putStrLn $ show e)
 
-webifyVersion = "0.1.5.0"
+webifyVersion = "0.1.6.0"
 
 main :: IO ()
 main = do
