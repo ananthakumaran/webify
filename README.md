@@ -22,6 +22,10 @@ For the list of available options
 
 [old versions](https://sourceforge.net/projects/webify/files/)
 
+You can also install it via cabal
+
+     $> cabal install webify
+
 
 ## CSS @font-face template
 
