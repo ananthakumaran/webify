@@ -37,7 +37,7 @@ data Opts = Opts { noEot         :: Bool
 optsDef :: Parser Opts
 optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
           <*> switch (long "no-woff" <> help "Disable woff")
-          <*> switch (long "no-svg" <> help "Disable eot")
+          <*> switch (long "no-svg" <> help "Disable svg")
           <*> switch (long "svg-enable-kerning" <> help "Enable svg kerning")
           <*> switch (long "zopfli" <> help "Use Zopfli Compression Algorithm")
           <*> option (long "svg-cmap-platform-id" <> value platformMicrosoft <> help "Svg cmap platform id")
