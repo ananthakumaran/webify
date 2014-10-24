@@ -23,16 +23,16 @@ module TTF(
   , kernPairs
 ) where
 
-import Control.Monad
-import Data.Binary.Strict.Get
-import Data.Bits
-import qualified Data.ByteString as B
-import Data.List
-import Data.Map hiding(map, findIndex)
-import Data.Maybe
-import qualified Data.Vector as V
-import Utils
-import Font
+import           Control.Monad
+import           Data.Binary.Strict.Get
+import           Data.Bits
+import qualified Data.ByteString        as B
+import           Data.List
+import           Data.Map               hiding (findIndex, map)
+import           Data.Maybe
+import qualified Data.Vector            as V
+import           Font
+import           Utils
 
 
 instance Font TTF where
@@ -53,161 +53,161 @@ instance Font TTF where
 
 
 data F12Group = F12Group { f12StartCharCode :: ULong
-                         , f12EndCharCode :: ULong
-                         , f12StartGlyphId :: ULong
+                         , f12EndCharCode   :: ULong
+                         , f12StartGlyphId  :: ULong
                          } deriving (Show)
 
-data CmapTable = CmapFormat0 { c0Format :: UShort
-                             , c0Length :: UShort
-                             , c0Version :: UShort
+data CmapTable = CmapFormat0 { c0Format   :: UShort
+                             , c0Length   :: UShort
+                             , c0Version  :: UShort
                              , c0GlyphIDs :: [Byte]
                              } |
-                 CmapFormat4 { c4Format :: UShort
-                             , c4Length :: UShort
-                             , c4Language :: UShort
-                             , c4SegCountX2 :: UShort
-                             , c4SearchRange :: UShort
-                             , c4EntrySelector :: UShort
-                             , c4RangeShift :: UShort
-                             , c4EndCodes :: [UShort]
-                             , c4ReservedPad :: UShort
-                             , c4StartCodes :: [UShort]
-                             , c4IdDeltas :: [UShort]
+                 CmapFormat4 { c4Format         :: UShort
+                             , c4Length         :: UShort
+                             , c4Language       :: UShort
+                             , c4SegCountX2     :: UShort
+                             , c4SearchRange    :: UShort
+                             , c4EntrySelector  :: UShort
+                             , c4RangeShift     :: UShort
+                             , c4EndCodes       :: [UShort]
+                             , c4ReservedPad    :: UShort
+                             , c4StartCodes     :: [UShort]
+                             , c4IdDeltas       :: [UShort]
                              , c4IdRangeOffsets :: [UShort]
-                             , c4GlyphIds :: [UShort]
+                             , c4GlyphIds       :: [UShort]
                              } |
-                 CmapFormat6 { c6Format :: UShort
-                             , c6Length :: UShort
-                             , c6Version :: UShort
-                             , c6FirstCode :: UShort
+                 CmapFormat6 { c6Format     :: UShort
+                             , c6Length     :: UShort
+                             , c6Version    :: UShort
+                             , c6FirstCode  :: UShort
                              , c6EntryCount :: UShort
-                             , c6GlyphIds :: [UShort]
+                             , c6GlyphIds   :: [UShort]
                              } |
-                 CmapFormat12 { c12Format :: Fixed
-                              , c12Length :: ULong
+                 CmapFormat12 { c12Format   :: Fixed
+                              , c12Length   :: ULong
                               , c12Language :: ULong
-                              , c12NGroups :: ULong
-                              , c12Groups :: [F12Group]
+                              , c12NGroups  :: ULong
+                              , c12Groups   :: [F12Group]
                               } deriving (Show)
 
 
 data CmapEncodingDirectory = CmapEncodingDirectory { cmapPlatformId :: UShort
                                                    , cmapEncodingId :: UShort
-                                                   , cmapOffset :: ULong
+                                                   , cmapOffset     :: ULong
                                                    } deriving (Show)
 
 
-data Cmap = Cmap { cmapVersion :: UShort
-                 , numberOfSubtables :: UShort
+data Cmap = Cmap { cmapVersion         :: UShort
+                 , numberOfSubtables   :: UShort
                  , encodingDirectories :: [CmapEncodingDirectory]
-                 , subTables :: [CmapTable]
+                 , subTables           :: [CmapTable]
                  } deriving (Show)
 
 
-data Hhea = Hhea { hheaVersion :: Fixed
-                 , ascender :: FWord
-                 , descender :: FWord
-                 , lineGap :: FWord
-                 , advanceWidthMax :: UFWord
-                 , minLeftSideBearing :: FWord
+data Hhea = Hhea { hheaVersion         :: Fixed
+                 , ascender            :: FWord
+                 , descender           :: FWord
+                 , lineGap             :: FWord
+                 , advanceWidthMax     :: UFWord
+                 , minLeftSideBearing  :: FWord
                  , minRightSideBearing :: FWord
-                 , xMaxExtend :: FWord
-                 , caretSlopeRise :: Short
-                 , caretSlopeRun :: Short
+                 , xMaxExtend          :: FWord
+                 , caretSlopeRise      :: Short
+                 , caretSlopeRun       :: Short
                    -- reserved 5 Short
-                 , metricDataFormat :: Short
-                 , numberOfHMetrics :: UShort
+                 , metricDataFormat    :: Short
+                 , numberOfHMetrics    :: UShort
                  } deriving (Show)
 
-data Maxp = Maxp { maxVersion :: Fixed
-                 , numGlyphs :: UShort
-                 , maxPoints :: UShort
-                 , maxContours :: UShort
-                 , maxCompositePoints :: UShort
-                 , maxCompositeContours :: UShort
-                 , maxZones :: UShort
-                 , maxTwilightPoints :: UShort
-                 , maxStorage :: UShort
-                 , maxFunctionDefs :: UShort
-                 , maxInstructionDefs :: UShort
-                 , maxStackElements :: UShort
+data Maxp = Maxp { maxVersion            :: Fixed
+                 , numGlyphs             :: UShort
+                 , maxPoints             :: UShort
+                 , maxContours           :: UShort
+                 , maxCompositePoints    :: UShort
+                 , maxCompositeContours  :: UShort
+                 , maxZones              :: UShort
+                 , maxTwilightPoints     :: UShort
+                 , maxStorage            :: UShort
+                 , maxFunctionDefs       :: UShort
+                 , maxInstructionDefs    :: UShort
+                 , maxStackElements      :: UShort
                  , maxSizeOfInstructions :: UShort
-                 , maxComponentElements :: UShort
-                 , maxComponentDepth :: UShort
+                 , maxComponentElements  :: UShort
+                 , maxComponentDepth     :: UShort
                  } deriving (Show)
 
 
 
 data Loca = Loca { locaOffsets :: [ULong] } deriving (Show)
 
-data CompositeGlyfElement = CompositeGlyfElement {cFlags :: UShort
+data CompositeGlyfElement = CompositeGlyfElement {cFlags       :: UShort
                                                  , cGlyphIndex :: UShort
-                                                 , cXoffset :: Short
-                                                 , cYoffset :: Short
-                                                 , cArgument1 :: Short
-                                                 , cArgument2 :: Short
-                                                 , cXScale :: Double
-                                                 , cYScale :: Double
-                                                 , cScale01 :: Double
-                                                 , cScale10 :: Double
+                                                 , cXoffset    :: Short
+                                                 , cYoffset    :: Short
+                                                 , cArgument1  :: Short
+                                                 , cArgument2  :: Short
+                                                 , cXScale     :: Double
+                                                 , cYScale     :: Double
+                                                 , cScale01    :: Double
+                                                 , cScale10    :: Double
                                                  } deriving (Show)
 
 data Glyf = EmptyGlyf |
-            SimpleGlyf { sNumberOfContours :: Short
-                         , sXMin :: FWord
-                         , sYMin :: FWord
-                         , sXMax :: FWord
-                         , sYMax :: FWord
+            SimpleGlyf { sNumberOfContours    :: Short
+                         , sXMin              :: FWord
+                         , sYMin              :: FWord
+                         , sXMax              :: FWord
+                         , sYMax              :: FWord
                          , sEndPtsOfCountours :: [UShort]
                          , sInstructionLength :: UShort
-                         , sInstructions :: [Byte]
-                         , sFlags :: [Byte]
-                         , sXCoordinates :: [Short]
-                         , sYCoordinates :: [Short]
+                         , sInstructions      :: [Byte]
+                         , sFlags             :: [Byte]
+                         , sXCoordinates      :: [Short]
+                         , sYCoordinates      :: [Short]
                          } |
             CompositeGlyf { cNumberOfContours :: Short
-                          , cXMin :: FWord
-                          , cYMin :: FWord
-                          , cXMax :: FWord
-                          , cYMax :: FWord
-                          , cGlyfs :: [CompositeGlyfElement]
-                          , cNumInstruction :: UShort
-                          , cInstructions :: [Byte]
+                          , cXMin             :: FWord
+                          , cYMin             :: FWord
+                          , cXMax             :: FWord
+                          , cYMax             :: FWord
+                          , cGlyfs            :: [CompositeGlyfElement]
+                          , cNumInstruction   :: UShort
+                          , cInstructions     :: [Byte]
                           } deriving (Show)
 
-data KernPair = KernPair { kpLeft :: UShort
-                           , kpRight :: UShort
-                           , kpValue :: Short
+data KernPair = KernPair { kpLeft       :: UShort
+                           , kpRight    :: UShort
+                           , kpValue    :: Short
                            , kTCoverage :: UShort } deriving (Show)
 
-data KernTable = KernSubTable0 { kNPairs :: UShort
-                               , kSearchRange :: UShort
+data KernTable = KernSubTable0 { kNPairs        :: UShort
+                               , kSearchRange   :: UShort
                                , kEntrySelector :: UShort
-                               , kRangeShift :: UShort
-                               , kKernPairs :: [KernPair] }
+                               , kRangeShift    :: UShort
+                               , kKernPairs     :: [KernPair] }
                | KernUnknown deriving (Show)
 
-data Kern =  Kern { kernVersion :: UShort
+data Kern =  Kern { kernVersion           :: UShort
                   , kernNumberOfSubtables :: UShort
-                  , kernTables :: [KernTable]
+                  , kernTables            :: [KernTable]
                   } deriving (Show)
 
-data TTF = TTF { version :: Fixed
-               , numTables :: UShort
-               , searchRange :: UShort
-               , entrySelector :: UShort
-               , rangeShift :: UShort
+data TTF = TTF { version          :: Fixed
+               , numTables        :: UShort
+               , searchRange      :: UShort
+               , entrySelector    :: UShort
+               , rangeShift       :: UShort
                , tableDirectories :: Map String TableDirectory
-               , os2 :: OS2
-               , head :: Head
-               , hhea :: Hhea
-               , name :: Name
-               , cmap :: Cmap
-               , maxp :: Maxp
-               , loca :: Loca
-               , hmtx :: Hmtx
-               , glyfs :: V.Vector Glyf
-               , kern :: Kern
+               , os2              :: OS2
+               , head             :: Head
+               , hhea             :: Hhea
+               , name             :: Name
+               , cmap             :: Cmap
+               , maxp             :: Maxp
+               , loca             :: Loca
+               , hmtx             :: Hmtx
+               , glyfs            :: V.Vector Glyf
+               , kern             :: Kern
                } deriving (Show)
 
 

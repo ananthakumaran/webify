@@ -6,10 +6,10 @@ module OTF(
   , parse
 ) where
 
-import qualified Data.ByteString as B
-import Data.Binary.Strict.Get
-import Data.Map
-import Font
+import           Data.Binary.Strict.Get
+import qualified Data.ByteString        as B
+import           Data.Map
+import           Font
 
 instance Font OTF where
   version = OTF.version
@@ -27,15 +27,15 @@ instance Font OTF where
   headCheckSumAdjusment = checkSumAdjusment . OTF.head
   name = OTF.name
 
-data OTF = OTF { version :: Fixed
-               , numTables :: UShort
-               , searchRange :: UShort
-               , entrySelector :: UShort
-               , rangeShift :: UShort
+data OTF = OTF { version          :: Fixed
+               , numTables        :: UShort
+               , searchRange      :: UShort
+               , entrySelector    :: UShort
+               , rangeShift       :: UShort
                , tableDirectories :: Map String TableDirectory
-               , os2 :: OS2
-               , head :: Head
-               , name :: Name
+               , os2              :: OS2
+               , head             :: Head
+               , name             :: Name
                } deriving (Show)
 
 parse :: B.ByteString -> Get OTF

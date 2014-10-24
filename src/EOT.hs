@@ -2,15 +2,15 @@ module EOT(
   generate
 ) where
 
-import Control.Monad
-import Data.Binary.Put
-import Data.Bits
-import qualified Data.ByteString as B
-import Data.List (find)
-import Data.Maybe (fromJust, isJust)
-import Data.Text.Encoding (encodeUtf16LE)
-import Font
-import Utils
+import           Control.Monad
+import           Data.Binary.Put
+import           Data.Bits
+import qualified Data.ByteString    as B
+import           Data.List          (find)
+import           Data.Maybe         (fromJust, isJust)
+import           Data.Text.Encoding (encodeUtf16LE)
+import           Font
+import           Utils
 
 putULong :: ULong -> Put
 putULong = putWord32le

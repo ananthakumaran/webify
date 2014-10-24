@@ -2,19 +2,19 @@ module SVG(
   generate
 ) where
 
-import Data.Bits
-import qualified Data.ByteString as B
-import Data.Char
-import Data.List (find, foldl', intercalate)
-import Data.Maybe (fromJust)
-import qualified Data.Text as T
-import qualified Data.Map as M
-import TTF
-import Font hiding (Char, name)
-import Text.XML.Generator
-import Numeric
-import Utils
-import Data.Vector as V ((!), length, last)
+import           Data.Bits
+import qualified Data.ByteString    as B
+import           Data.Char
+import           Data.List          (find, foldl', intercalate)
+import qualified Data.Map           as M
+import           Data.Maybe         (fromJust)
+import qualified Data.Text          as T
+import           Data.Vector        as V (last, length, (!))
+import           Font               hiding (Char, name)
+import           Numeric
+import           Text.XML.Generator
+import           TTF
+import           Utils
 
 byNameId :: UShort -> TTF -> T.Text
 byNameId id' ttf =

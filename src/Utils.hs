@@ -10,13 +10,13 @@ module Utils(
   , maxDuplicate
 ) where
 
-import qualified Data.ByteString as B
+import           Control.Monad
+import qualified Data.ByteString      as B
 import qualified Data.ByteString.Lazy as BL
-import Control.Monad
-import Debug.Trace
-import Data.List
-import Text.Printf
-import Data.Function
+import           Data.Function
+import           Data.List
+import           Debug.Trace
+import           Text.Printf
 
 fromRight :: (Either String t2, t) -> t2
 fromRight (Right x, _) = x

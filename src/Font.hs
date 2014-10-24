@@ -40,18 +40,18 @@ module Font(
   , parseName
 ) where
 
-import Control.Monad
-import Data.Binary.Strict.Get
-import qualified Data.ByteString as B
-import Data.ByteString.Char8 (unpack)
-import Data.Int
-import Data.Map hiding(map)
-import qualified Data.Text as T
-import Data.Text.Encoding.Error
-import qualified Data.Vector as V
-import Data.Word
-import Utils
-import Data.Text.Encoding
+import           Control.Monad
+import           Data.Binary.Strict.Get
+import qualified Data.ByteString          as B
+import           Data.ByteString.Char8    (unpack)
+import           Data.Int
+import           Data.Map                 hiding (map)
+import qualified Data.Text                as T
+import           Data.Text.Encoding
+import           Data.Text.Encoding.Error
+import qualified Data.Vector              as V
+import           Data.Word
+import           Utils
 
 -- font data types
 
@@ -64,7 +64,6 @@ type UFWord = Word16
 type ULong = Word32
 -- type Long = Int32
 type Fixed = Word32
-
 
 getFixed :: Get Fixed
 getFixed = liftM fromIntegral getWord32be
@@ -96,68 +95,68 @@ getUFixed = liftM ((/ 0x4000) . fromIntegral) getShort
 
 
 --- common parsing utils
-data TableDirectory = TableDirectory { tDTag :: String
+data TableDirectory = TableDirectory { tDTag      :: String
                                      , tDCheckSum :: ULong
-                                     , tDOffset :: ULong
-                                     , tDLength :: ULong
-                                     , tDRawData :: B.ByteString
+                                     , tDOffset   :: ULong
+                                     , tDLength   :: ULong
+                                     , tDRawData  :: B.ByteString
                                      } deriving (Show)
 
-data NameRecord = NameRecord { platformId :: UShort
+data NameRecord = NameRecord { platformId   :: UShort
                                , encodingId :: UShort
                                , languageId :: UShort
-                               , nameId :: UShort
-                               , strLength :: UShort
-                               , strOffset :: UShort
-                               , str :: T.Text
+                               , nameId     :: UShort
+                               , strLength  :: UShort
+                               , strOffset  :: UShort
+                               , str        :: T.Text
                              } deriving (Show)
 
-data Name = Name { formatSelector :: UShort
+data Name = Name { formatSelector        :: UShort
                    , numberOfNameRecords :: UShort
-                   , storageOffset :: UShort
-                   , nameRecords :: [NameRecord]
+                   , storageOffset       :: UShort
+                   , nameRecords         :: [NameRecord]
                  } deriving (Show)
 
 data HMetric = HMetric { advanceWidth :: UFWord
-                         , lsb :: FWord
+                         , lsb        :: FWord
                          } deriving (Show)
 
-data Hmtx = Hmtx { hMetrics :: V.Vector HMetric
+data Hmtx = Hmtx { hMetrics         :: V.Vector HMetric
                  , leftSideBearings :: [FWord]
                  } deriving (Show)
 
-data OS2 = OS2 { os2Version :: UShort
-               , xAvgCharWidth :: Short
-               , usWeightClass :: UShort
-               , usWidthClass :: UShort
-               , fsType :: UShort
-               , ySubscriptXSize :: Short
-               , ySubscriptYSize :: Short
-               , ySubscriptXOffset :: Short
-               , ySubscriptYOffset :: Short
-               , ySuperscriptXSize :: Short
-               , ySuperscriptYSize :: Short
+data OS2 = OS2 { os2Version          :: UShort
+               , xAvgCharWidth       :: Short
+               , usWeightClass       :: UShort
+               , usWidthClass        :: UShort
+               , fsType              :: UShort
+               , ySubscriptXSize     :: Short
+               , ySubscriptYSize     :: Short
+               , ySubscriptXOffset   :: Short
+               , ySubscriptYOffset   :: Short
+               , ySuperscriptXSize   :: Short
+               , ySuperscriptYSize   :: Short
                , ySuperscriptXOffset :: Short
                , ySuperscriptYOffset :: Short
-               , yStrikeoutSize :: Short
-               , yStrikeoutPosition :: Short
-               , sFamilyClass :: Short
-               , panose :: [Byte]
-               , ulUnicodeRange1 :: ULong
-               , ulUnicodeRange2 :: ULong
-               , ulUnicodeRange3 :: ULong
-               , ulUnicodeRange4 :: ULong
-               , aschVendID :: [Byte]
-               , fsSelection :: UShort
-               , usFirstCharIndex :: UShort
-               , usLastCharIndex :: UShort
-               , sTypoAscender :: UShort
-               , sTypoDescender :: UShort
-               , sTypoLineGap :: UShort
-               , usWinAscent :: UShort
-               , usWinDescent :: UShort
-               , ulCodePageRange1 :: ULong
-               , ulCodePageRange2 :: ULong
+               , yStrikeoutSize      :: Short
+               , yStrikeoutPosition  :: Short
+               , sFamilyClass        :: Short
+               , panose              :: [Byte]
+               , ulUnicodeRange1     :: ULong
+               , ulUnicodeRange2     :: ULong
+               , ulUnicodeRange3     :: ULong
+               , ulUnicodeRange4     :: ULong
+               , aschVendID          :: [Byte]
+               , fsSelection         :: UShort
+               , usFirstCharIndex    :: UShort
+               , usLastCharIndex     :: UShort
+               , sTypoAscender       :: UShort
+               , sTypoDescender      :: UShort
+               , sTypoLineGap        :: UShort
+               , usWinAscent         :: UShort
+               , usWinDescent        :: UShort
+               , ulCodePageRange1    :: ULong
+               , ulCodePageRange2    :: ULong
                } deriving (Show)
 
 parseTableDirectory :: B.ByteString -> Get TableDirectory
@@ -217,23 +216,23 @@ parseOS2 = parseTable "OS/2" (do
   ulCodePageRange2 <- getULong
   return OS2 {..})
 
-data Head = Head { headVersion :: Fixed
-                 , fontRevision :: Fixed
+data Head = Head { headVersion       :: Fixed
+                 , fontRevision      :: Fixed
                  , checkSumAdjusment :: ULong
-                 , magicNumber :: ULong
-                 , headFlags :: UShort
-                 , unitsPerEm :: UShort
-                 , created :: B.ByteString
-                 , modified :: B.ByteString
-                 , xMin :: FWord
-                 , yMin :: FWord
-                 , xMax :: FWord
-                 , yMax :: FWord
-                 , macStyle :: UShort
-                 , lowestRecPPEM :: UShort
+                 , magicNumber       :: ULong
+                 , headFlags         :: UShort
+                 , unitsPerEm        :: UShort
+                 , created           :: B.ByteString
+                 , modified          :: B.ByteString
+                 , xMin              :: FWord
+                 , yMin              :: FWord
+                 , xMax              :: FWord
+                 , yMax              :: FWord
+                 , macStyle          :: UShort
+                 , lowestRecPPEM     :: UShort
                  , fontDirectionHint :: Short
-                 , indexToLocFormat :: Short
-                 , glyphDataFormat :: Short
+                 , indexToLocFormat  :: Short
+                 , glyphDataFormat   :: Short
                  } deriving (Show)
 
 parseHead :: Map String TableDirectory -> B.ByteString -> Head
