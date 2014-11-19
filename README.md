@@ -51,7 +51,7 @@ You can also install it via cabal
 
 
 [w1]: http://www.w3.org/TR/WOFF/
-[w2]: http://www.w3.org/TR/2014/WD-WOFF20ER-20140128/
+[w2]: http://www.w3.org/TR/WOFF2/
 [svg]: http://www.w3.org/TR/SVG/fonts.html
 [eot]: http://www.w3.org/Submission/EOT/
 [mtx]: http://www.w3.org/Submission/MTX/
