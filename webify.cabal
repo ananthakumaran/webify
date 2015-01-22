@@ -25,7 +25,7 @@ executable webify
   if flag(debug)
     ghc-prof-options: -prof, -fprof-auto
 
-  build-depends:       base >=4.4 && <5,
+  build-depends:       base >=4.6 && <5,
                        containers >= 0.4.2.1,
                        bytestring >= 0.9,
                        blaze-builder >= 0.3.3.4,
