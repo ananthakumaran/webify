@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module SVG(
   generate
 ) where
@@ -8,11 +10,12 @@ import           Data.Char
 import           Data.List          (find, foldl', intercalate)
 import qualified Data.Map           as M
 import           Data.Maybe         (fromJust)
+import qualified Data.Text          ()
 import qualified Data.Text          as T
 import           Data.Vector        as V (last, length, (!))
 import           Font               hiding (Char, name)
 import           Numeric
-import           Text.XML.Generator
+import           Text.XML.Generator hiding (xattr)
 import           TTF
 import           Utils
 
@@ -149,8 +152,8 @@ svgGlyph ttf cmapTable averageAdvanceX code =
 
 missingGlyph :: TTF -> Xml Elem
 missingGlyph ttf  =
-  xelem "missing-glyph" (xattrs [xattr "horiz-adv-x" $ show $ advanceX (hmtx ttf) 0,
-                                 xattr "d" $ svgPath glyph ttf])
+  xelem "missing-glyph" (xattrs [xattr "horiz-adv-x" $ T.pack $ show $ advanceX (hmtx ttf) 0,
+                                 xattr "d" $ T.pack $ svgPath glyph ttf])
   where glyph = glyfs ttf ! 0
 
 
@@ -174,9 +177,9 @@ svgGlyphs ttf cmapTable=
 fontFace :: TTF -> Xml Elem
 fontFace ttf =
   xelem "font-face" (xattrs [xattr "font-family" $ fontFamilyName ttf,
-                             xattr "units-per-em" $ show . unitsPerEm $ TTF.head ttf,
-                             xattr "ascent" $ show . ascender $ hhea ttf,
-                             xattr "descent" $ show . descender $ hhea ttf])
+                             xattr "units-per-em" $ T.pack . show . unitsPerEm $ TTF.head ttf,
+                             xattr "ascent" $ T.pack . show . ascender $ hhea ttf,
+                             xattr "descent" $ T.pack . show . descender $ hhea ttf])
 
 
 svgKern :: M.Map Int [Int] -> KernPair -> Xml Elem
@@ -184,7 +187,7 @@ svgKern glyphIdToCodeMap KernPair{kpLeft = left, kpRight = right,
                kpValue = value, kTCoverage = coverage} =
   xelem ktype (xattrs [xattrRaw "u1" $ unicode left,
                          xattrRaw "u2" $ unicode right,
-                         xattr "k" $ show (-value)])
+                         xattr "k" $ T.pack $ show (-value)])
   where unicode code = intercalate "," $ map (escapeXMLChar . chr . fromIntegral) (glyphIdToCodeMap M.! fromIntegral code)
         ktype = if testBit coverage 0 then "hkern" else "vkern"
 
@@ -209,20 +212,20 @@ svgKerns ttf cmapTable _ =
 
 testText :: TTF -> Xml Elem
 testText ttf =
-  xelem "g" (xattr "style" ("font-family: " ++ show (fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
+  xelem "g" (xattr "style" (T.pack $ "font-family: " ++ show (fontFamilyName ttf) ++ "; font-size:50;fill:black") <#>
              xelems (zipWith text ["!\"#$%&'()*+,-./0123456789:;å<>?",
                                    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_",
                                    "` abcdefghijklmnopqrstuvwxyz|{}~"] [1..]))
   where
     text :: String -> Int -> Xml Elem
     text t i = xelem "text" (xattrs [xattr "x" "20",
-                                     xattr "y" $ show (i * 50)] <#> xtext t)
+                                     xattr "y" $ T.pack $ show (i * 50)] <#> xtext (T.pack t))
 
 svgbody :: TTF -> CmapTable -> Bool -> Xml Elem
 svgbody ttf cmapTable enableKern =
   xelems [xelemEmpty "metadata",
-          xelem "defs" $
-          xelem "font" (xattrs [xattr "horiz-adv-x" $ show avgAdvanceX] <#>
+          xelem (T.pack "defs") $
+          xelem "font" (xattrs [xattr "horiz-adv-x" $ T.pack $ show avgAdvanceX] <#>
                         xelems ([fontFace ttf,
                                 glyps] ++ svgKerns ttf cmapTable enableKern)),
           testText ttf]

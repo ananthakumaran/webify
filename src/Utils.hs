@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+
 module Utils(
   fromRight
   , substr
@@ -8,15 +9,21 @@ module Utils(
   , debug
   , formatTable
   , maxDuplicate
+  , xattrRaw
+  , xattr
 ) where
 
+import           Blaze.ByteString.Builder.Char.Utf8
 import           Control.Monad
-import qualified Data.ByteString      as B
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString                    as B
+import qualified Data.ByteString.Lazy               as BL
 import           Data.Function
 import           Data.List
+import           Data.Text                          ()
+import qualified Data.Text                          as T
 import           Debug.Trace
 import           Text.Printf
+import qualified Text.XML.Generator                 as X
 
 fromRight :: (Either String t2, t) -> t2
 fromRight (Right x, _) = x
@@ -49,3 +56,9 @@ maxDuplicate = head . minimumBy (compare `on` (negate . length)) . group . sort
 debug :: Monad m => String -> m ()
 debug str =
   when True $ trace str $ return ()
+
+xattrRaw :: String -> String -> X.Xml X.Attr
+xattrRaw name attr = X.xattrQRaw X.defaultNamespace (T.pack name) (fromString attr)
+
+xattr :: String -> T.Text -> X.Xml X.Attr
+xattr name = X.xattr (T.pack name)
