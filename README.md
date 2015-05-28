@@ -12,7 +12,7 @@ For the list of available options
 
 ## Installation
 
-Latest pre-built binaries for window, mac and linux can be downloaded
+Latest pre-built binaries for windows, mac and linux can be downloaded
 [here](https://github.com/ananthakumaran/webify/releases/latest)
 
 You can also install it via cabal
