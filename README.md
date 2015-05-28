@@ -10,17 +10,10 @@ For the list of available options
 
     $> webify --help
 
-## Binaries
+## Installation
 
-[mac 64 bit](https://sourceforge.net/projects/webify/files/mac/webify/download)
-
-[linux 64 bit](https://sourceforge.net/projects/webify/files/linux/webify/download)
-
-[linux 32 bit](https://sourceforge.net/projects/webify/files/linux32/webify/download)
-
-[windows 32 bit](https://sourceforge.net/projects/webify/files/windows/webify.exe/download)
-
-[old versions](https://sourceforge.net/projects/webify/files/)
+Latest pre-built binaries for window, mac and linux can be downloaded
+[here](https://github.com/ananthakumaran/webify/releases/latest)
 
 You can also install it via cabal
 
