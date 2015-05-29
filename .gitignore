@@ -3,7 +3,6 @@ cabal-dev
 fonts/*
 test_fonts/*
 generated_fonts/*
-dist/
 ttfdump*
 Makefile
 todo.org
