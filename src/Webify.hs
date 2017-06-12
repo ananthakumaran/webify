@@ -40,9 +40,9 @@ optsDef = Opts <$> switch (long "no-eot" <> help "Disable eot")
           <*> switch (long "no-svg" <> help "Disable svg")
           <*> switch (long "svg-enable-kerning" <> help "Enable svg kerning")
           <*> switch (long "zopfli" <> help "Use Zopfli Compression Algorithm")
-          <*> option (long "svg-cmap-platform-id" <> value platformMicrosoft <> help "Svg cmap platform id")
-          <*> option (long "svg-cmap-encoding-id" <> value encodingUGL  <> help "Svg cmap encoding id")
-          <*> arguments1 str (metavar "FONTS")
+          <*> option auto (long "svg-cmap-platform-id" <> value platformMicrosoft <> help "Svg cmap platform id")
+          <*> option auto (long "svg-cmap-encoding-id" <> value encodingUGL  <> help "Svg cmap encoding id")
+          <*> some (argument str (metavar "FONTS"))
 
 changeExtension :: FilePath -> FilePath -> FilePath
 changeExtension ext = flip addExtension ext . dropExtension
