@@ -468,7 +468,7 @@ parseGlyf numberOfContours | numberOfContours >= 0 = do
 
 parseGlyfs :: Int -> [Int] -> Map String TableDirectory -> B.ByteString -> [Glyf]
 parseGlyfs glyphCount offsets tds font =
-  zipWith getGlyph (take glyphCount offsets) $ diff offsets
+  zipWith getGlyph (Data.List.take glyphCount offsets) $ diff offsets
   where tableStart = fromIntegral . tDOffset $ tds ! "glyf"
         getGlyph _ 0 = EmptyGlyf
         getGlyph offset _len =
