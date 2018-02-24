@@ -12,7 +12,7 @@ maintainer:          Sarah Brofeldt <sbrofeldt@gmail.com>
 copyright:           (c) 2013 Anantha Kumaran
 category:            Web
 build-type:          Simple
-tested-with:         GHC == 7.8.4, GHC == 7.10.2, GHC == 8.0.2
+tested-with:         GHC == 7.10.2, GHC == 8.0.2, GHC == 8.2.2
 cabal-version:       >=1.8
 
 Flag debug
@@ -26,7 +26,7 @@ executable webify
   if flag(debug)
     ghc-prof-options: -prof, -fprof-auto
 
-  build-depends:       base >=4.6 && <5,
+  build-depends:       base >=4.8 && <5,
                        containers >= 0.4.2.1,
                        bytestring >= 0.9,
                        blaze-builder >= 0.3.3.4,
