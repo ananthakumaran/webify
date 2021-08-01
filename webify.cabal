@@ -12,7 +12,7 @@ maintainer:          Sarah Brofeldt <sbrofeldt@gmail.com>
 copyright:           (c) 2013 Anantha Kumaran
 category:            Web
 build-type:          Simple
-tested-with:         GHC == 7.10.2, GHC == 8.0.2, GHC == 8.2.2
+tested-with:         GHC == 8.0.2, GHC == 8.2.2
 cabal-version:       >=1.8
 
 Flag debug

@@ -7,9 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['8.10.4']
+        ghc: ['8.0.2', '8.10.4']
         os: [ubuntu-latest, macOS-latest, windows-latest]
-    name: Haskell GHC ${{ matrix.ghc }}
+    name: Haskell GHC ${{ matrix.ghc }} ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Haskell
