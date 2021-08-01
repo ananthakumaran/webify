@@ -13,8 +13,7 @@ packages:
     hackage: binary-strict-0.4.8.6@sha256:456da8c1452a18349fbb02134ba608cf7420014cb93e9c39e7e4b99de1c48a7e,2222
 snapshots:
 - completed:
-    size: 524996
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
-    sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
-  original:
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
+    size: 585817
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/5.yaml
+    sha256: 22d24d0dacad9c1450b9a174c28d203f9bb482a2a8da9710a2f2a9f4afee2887
+  original: lts-18.5
