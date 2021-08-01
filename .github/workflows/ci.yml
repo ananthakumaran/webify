@@ -28,7 +28,7 @@ jobs:
         if: contains(matrix.os, 'windows')
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags')
+        if: ${{ startsWith(github.ref, 'refs/tags') && matrix.ghc == '8.10.4' }}
         with:
           draft: true
           files: |
