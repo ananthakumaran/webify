@@ -13,3 +13,4 @@ src/Webify
 *.prof*
 .cabal-sandbox
 cabal.sandbox.config
+.stack-work

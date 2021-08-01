@@ -5,10 +5,9 @@ require 'pathname'
 require 'timeout'
 require 'erb'
 
-BIN = "dist/build/webify/webify"
 GENERATED_EXTS = %w[woff eot svg]
 FONT_EXTS = [['ttf', 'truetype'], ['woff', 'woff'], ['svg', 'svg'], ['eot', 'embedded-opentype']]
-WOFF_VALIDATE='fonts/woff_validate'
+WOFF_VALIDATE='scripts/woff_validate'
 
 def exec_with_timeout(cmd, timeout)
   pid = Process.spawn(cmd, {:pgroup => true})
@@ -42,7 +41,7 @@ FileUtils.rm_f(Dir.glob("generated_fonts/*"))
 Dir.glob "test_fonts/*.ttf" do |font|
   puts font
   generated_fonts = GENERATED_EXTS.map { |e| change_extension(font, e) }
-  if exec_with_timeout("#{BIN} #{font}", 30)
+  if exec_with_timeout("stack exec -- webify #{font}", 30)
     successfully_converted << font
     FileUtils.mv(generated_fonts, "generated_fonts")
     FileUtils.cp(font, "generated_fonts")
