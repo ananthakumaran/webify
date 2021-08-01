@@ -19,3 +19,19 @@ jobs:
           enable-stack: true
           stack-version: 'latest'
       - run: stack build
+      - run: stack install
+      - run: cp webify webify-linux-amd64
+        if: contains(matrix.os, 'ubuntu')
+      - run: cp webify webify-darwin-amd64
+        if: contains(matrix.os, 'mac')
+      - run: cp webify.exe webify-windows-amd64.exe
+        if: contains(matrix.os, 'windows')
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags')
+        with:
+          draft: true
+          files: |
+            webify-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
