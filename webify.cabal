@@ -1,5 +1,5 @@
 name:                webify
-version:             0.1.9.0
+version:             0.1.10.0
 synopsis:            webfont generator
 description:
         A command line tool to convert ttf file to woff, eot & svg files
